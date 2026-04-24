@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>シンプル英単語帳</title>
+    <link rel="stylesheet" href="assets/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="setup-view">
+        <h2>単語帳ファイルを読み込む</h2>
+        <input type="file" id="file-input" accept=".csv,.txt" /><br /><br />
+        <p><small>形式: 英語,日本語 (ヘッダなし)</small></p>
+      </div>
+
+      <div id="study-view" class="hidden">
+        <div class="stats">
+          進捗: <span id="current-idx">0</span> /
+          <span id="total-count">0</span>
+        </div>
+        <div class="stats">正解数: <b id="live-score">0</b></div>
+
+        <div class="card" id="card" onclick="flipCard()">
+          <span id="word-display">クリックして開始</span>
+        </div>
+
+        <div id="controls" class="hidden">
+          <button class="btn correct" onclick="submitAnswer(true)">正解</button>
+          <button class="btn wrong" onclick="submitAnswer(false)">
+            不正解
+          </button>
+        </div>
+      </div>
+
+      <div id="result-view" class="hidden">
+        <h2>結果発表</h2>
+        <p class="score-display">正解率: <span id="final-score">0</span>%</p>
+        <p id="final-stats"></p>
+        <button class="btn" onclick="location.reload()">もう一度</button>
+      </div>
+    </div>
+
+    <script src="assets/script.js"></script>
+  </body>
+</html>

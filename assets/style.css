@@ -1,0 +1,79 @@
+body {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f0f2f5;
+  color: #333;
+}
+
+#app {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  width: 400px;
+  text-align: center;
+  margin-top: 50px;
+}
+
+.card {
+  font-size: 2rem;
+  margin: 20px 0;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #007bff;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.card:hover {
+  background: #f8fbff;
+}
+
+.stats {
+  margin-bottom: 10px;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+#live-score {
+  color: #28a745;
+  font-size: 1.2rem;
+}
+
+.hidden {
+  display: none;
+}
+
+.btn {
+  padding: 12px 24px;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 8px;
+  border: none;
+  background: #007bff;
+  color: white;
+  margin: 5px;
+  transition: opacity 0.2s;
+}
+
+.btn:hover {
+  opacity: 0.8;
+}
+
+.btn.correct {
+  background: #28a745;
+}
+.btn.wrong {
+  background: #dc3545;
+}
+
+.score-display {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #007bff;
+}
