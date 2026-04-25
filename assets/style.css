@@ -1,79 +1,97 @@
 body {
-  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-family: sans-serif;
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: #f0f2f5;
-  color: #333;
+  background: #f4f7f9;
+  margin: 0;
+  padding: 20px;
 }
-
 #app {
   background: white;
-  padding: 2rem;
-  border-radius: 12px;
+  padding: 1.5rem;
+  border-radius: 16px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  width: 400px;
+  width: 100%;
+  max-width: 400px;
   text-align: center;
-  margin-top: 50px;
+  box-sizing: border-box;
 }
-
-.card {
-  font-size: 2rem;
+.file-label {
+  display: block;
+  padding: 40px 10px;
+  border: 2px dashed #007bff;
+  border-radius: 12px;
+  cursor: pointer;
+  background: #f0f7ff;
   margin: 20px 0;
-  min-height: 120px;
+  font-weight: bold;
+}
+.card {
+  font-size: 1.8rem;
+  margin: 15px 0;
+  min-height: 180px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   border: 2px solid #007bff;
-  border-radius: 12px;
+  border-radius: 16px;
   cursor: pointer;
-  transition: background 0.2s;
+  padding: 15px;
 }
-
-.card:hover {
-  background: #f8fbff;
+#instruction {
+  font-size: 0.8rem;
+  color: #bbb;
+  margin-top: 10px;
 }
-
-.stats {
+.history-badge {
+  font-size: 0.75rem;
+  color: #ff6b6b;
   margin-bottom: 10px;
-  color: #666;
-  font-size: 0.9rem;
+  font-weight: bold;
 }
-
-#live-score {
-  color: #28a745;
-  font-size: 1.2rem;
-}
-
 .hidden {
-  display: none;
+  display: none !important;
 }
-
+.btn-group {
+  display: flex;
+  justify-content: space-around;
+}
 .btn {
-  padding: 12px 24px;
+  padding: 16px;
   font-size: 1rem;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 10px;
   border: none;
   background: #007bff;
   color: white;
-  margin: 5px;
-  transition: opacity 0.2s;
+  width: 45%;
+  font-weight: bold;
 }
-
-.btn:hover {
-  opacity: 0.8;
-}
-
 .btn.correct {
   background: #28a745;
 }
 .btn.wrong {
   background: #dc3545;
 }
-
-.score-display {
-  font-size: 2rem;
+.btn.full {
+  width: 100%;
+  margin-top: 20px;
+}
+.btn-secondary {
+  background: #6c757d;
+}
+#live-score-container {
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #e9f7ef;
+  border-radius: 8px;
+  color: #28a745;
+}
+.final-score-text {
+  font-size: 2.5rem;
   font-weight: bold;
   color: #007bff;
 }
