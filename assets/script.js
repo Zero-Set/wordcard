@@ -4,7 +4,7 @@ let currentIndex = 0;
 let sessionScore = 0;
 let isFlipped = false;
 let touchStartX = 0;
-let isProcessing = false; // ★ここが漏れていたため追加
+let isProcessing = false;
 
 const STORAGE_KEY = "tango_master_stats";
 const fileInput = document.getElementById("file-input");
@@ -15,7 +15,7 @@ const swipeWrapper = document.getElementById("swipe-wrapper");
 
 const threshold = 80;
 
-// --- スワイプイベント ---
+// --- 1. スワイプイベント ---
 swipeWrapper.addEventListener(
   "touchstart",
   (e) => {
@@ -30,33 +30,40 @@ swipeWrapper.addEventListener(
     const touchEndX = e.changedTouches[0].screenX;
     const diff = touchEndX - touchStartX;
 
-    // 裏返し前、移動距離不足、または処理中なら無視
+    // ガード：裏返し前、または移動不足、または次のカードへ移行中
     if (!isFlipped || Math.abs(diff) < threshold || isProcessing) return;
 
-    if (diff > threshold) {
-      animateAndSubmit("right", true); // 右 = 正解
-    } else if (diff < -threshold) {
-      animateAndSubmit("left", false); // 左 = 不正解
-    }
+    if (diff > threshold) animateAndSubmit("right", true);
+    else if (diff < -threshold) animateAndSubmit("left", false);
   },
   { passive: true },
 );
 
+// --- 2. 判定演出とデータ送信 ---
 function animateAndSubmit(direction, isCorrect) {
-  // すでに処理中ならガード（二重発火防止）
   if (isProcessing) return;
+  isProcessing = true; // 次のカードが出るまで操作をロック
 
   const swipeClass = direction === "right" ? "swipe-right" : "swipe-left";
   card.classList.add(swipeClass);
 
-  // アニメーション完了後にロジックを実行
+  // 0.2秒のアニメーション後にデータを更新して次へ
   setTimeout(() => {
     card.classList.remove(swipeClass);
     submitAnswer(isCorrect);
   }, 200);
 }
 
-// --- 基本ロジック ---
+// --- 3. ボタンイベント ---
+document.getElementById("btn-correct").onclick = () => {
+  if (isFlipped && !isProcessing) animateAndSubmit("right", true);
+};
+
+document.getElementById("btn-wrong").onclick = () => {
+  if (isFlipped && !isProcessing) animateAndSubmit("left", false);
+};
+
+// --- 4. ファイル読み込み ---
 fileInput.onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -87,17 +94,13 @@ fileInput.onchange = (e) => {
   reader.readAsText(file, "UTF-8");
 };
 
+// --- 5. セッション管理 ---
 function setupSession(filterMistakes) {
   const stats = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
   words = filterMistakes
     ? allWords.filter((w) => stats[w.en] && stats[w.en].wrong > 0)
     : [...allWords];
-
-  if (words.length === 0) {
-    if (filterMistakes) alert("過去に間違えた単語はありません。");
-    words = [...allWords];
-  }
-
+  if (words.length === 0) words = [...allWords];
   words.sort(() => Math.random() - 0.5);
   currentIndex = 0;
   sessionScore = 0;
@@ -112,16 +115,17 @@ function startStudy() {
   showWord();
 }
 
+// --- 6. 単語の表示と登場アニメーション ---
 function showWord() {
   isFlipped = false;
-  isProcessing = false;
+  isProcessing = false; // ★ここでロックを解除
 
-  // ★追加：一度アニメーションクラスを外す（リセット）
-  card.classList.remove("card-new-appear");
+  // クラスのリセット
+  card.className = "card"; // 一旦標準のクラスのみにする
 
   wordDisplay.textContent = words[currentIndex].en;
   wordDisplay.style.color = "#333";
-  document.getElementById("instruction").textContent = "タップして回答を表示";
+  document.getElementById("instruction").textContent = "タップで回答を表示";
   controls.classList.add("hidden");
   document.getElementById("current-idx").textContent = currentIndex + 1;
 
@@ -131,47 +135,32 @@ function showWord() {
     ? `通算: ○${s.correct} / ×${s.wrong}`
     : `(初登場)`;
 
-  // ★追加：リフロー（再描画）を強制させてから、アニメーションクラスを付与
-  // これをしないとクラス削除->追加が速すぎてアニメーションが動かない
+  // アニメーション適用
   void card.offsetWidth;
-
   card.classList.add("card-new-appear");
-
-  // ★追加：アニメーション終了後にクラスを削除（pointer-events: noneを解除するため）
-  setTimeout(() => {
-    card.classList.remove("card-new-appear");
-  }, 300); // CSSのアニメーション時間（0.3s）と合わせる
 }
 
-card.onclick = () => {
+// ★最重要：カードのクリックイベント
+card.onclick = (e) => {
+  // すでに裏返っているか、判定アニメーション中なら無視
   if (isFlipped || isProcessing) return;
+
   isFlipped = true;
   wordDisplay.textContent = words[currentIndex].ja;
   wordDisplay.style.color = "#007bff";
   document.getElementById("instruction").textContent =
-    "スワイプで判定 (右:○ / 左:×)";
+    "スワイプまたはボタンで判定";
   controls.classList.remove("hidden");
 };
 
-// ボタン用
-document.getElementById("btn-correct").onclick = () => {
-  if (!isFlipped || isProcessing) return;
-  animateAndSubmit("right", true);
-};
-document.getElementById("btn-wrong").onclick = () => {
-  if (!isFlipped || isProcessing) return;
-  animateAndSubmit("left", false);
-};
-
+// --- 7. 回答処理 ---
 function submitAnswer(isCorrect) {
-  // すでに全ての単語を終えていたら何もしない
   if (currentIndex >= words.length) return;
-
-  isProcessing = true; // 処理開始
 
   let stats = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
   const word = words[currentIndex].en;
   if (!stats[word]) stats[word] = { correct: 0, wrong: 0 };
+
   isCorrect ? stats[word].correct++ : stats[word].wrong++;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
 
@@ -186,6 +175,7 @@ function submitAnswer(isCorrect) {
   }
 }
 
+// --- 8. 結果表示 ---
 function showResults() {
   document.getElementById("study-view").classList.add("hidden");
   document.getElementById("result-view").classList.remove("hidden");
@@ -207,6 +197,5 @@ function showResults() {
 function resetAllHistory() {
   if (confirm("記録をすべて削除しますか？")) {
     localStorage.removeItem(STORAGE_KEY);
-    alert("記録を削除しました。");
   }
 }
