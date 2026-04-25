@@ -65,6 +65,9 @@ async function handleSwipe(isCorrect) {
 }
 
 function showWord() {
+  const msg = "タップで回答を表示";
+  document.getElementById("instruction").textContent = msg;
+
   isFlipped = false;
   isProcessing = false;
   card.style.transition = "none";
