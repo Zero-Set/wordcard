@@ -1,3 +1,4 @@
+/* --- Base Layout --- */
 body {
   font-family: sans-serif;
   display: flex;
@@ -7,6 +8,7 @@ body {
   margin: 0;
   padding: 20px;
 }
+
 #app {
   background: white;
   padding: 1.5rem;
@@ -17,6 +19,8 @@ body {
   text-align: center;
   box-sizing: border-box;
 }
+
+/* --- Setup View (File Input) --- */
 .file-label {
   display: block;
   padding: 40px 10px;
@@ -27,37 +31,95 @@ body {
   margin: 20px 0;
   font-weight: bold;
 }
-.card {
-  font-size: 1.8rem;
-  margin: 15px 0;
-  min-height: 180px;
+
+/* --- Study View (Swipe & Card) --- */
+#swipe-wrapper {
+  width: 100%;
+  min-height: 320px; /* カードが縦に伸びてもスワイプ領域を確保 */
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 2px solid #007bff;
-  border-radius: 16px;
-  cursor: pointer;
-  padding: 15px;
+  touch-action: none; /* ブラウザのスクロールを止めてスワイプを優先 */
+  perspective: 1000px; /* 3D回転効果の奥行き */
+  position: relative;
 }
+
+.card {
+  width: 100%;
+  min-height: 220px;
+  height: auto;
+  padding: 25px;
+  background: white;
+  border: 2px solid #007bff;
+  border-radius: 20px;
+  box-sizing: border-box;
+
+  /* Text Style */
+  font-size: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  word-break: break-all; /* 長い英単語の突き抜け防止 */
+
+  /* Animation Settings */
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+  backface-visibility: hidden;
+  cursor: pointer;
+}
+
+/* Swipe Animations */
+.swipe-right {
+  transform: translateX(200px) rotate(20deg) !important;
+  opacity: 0 !important;
+}
+
+.swipe-left {
+  transform: translateX(-200px) rotate(-20deg) !important;
+  opacity: 0 !important;
+}
+
+/* --- UI Elements --- */
 #instruction {
   font-size: 0.8rem;
   color: #bbb;
   margin-top: 10px;
 }
+
 .history-badge {
   font-size: 0.75rem;
   color: #ff6b6b;
   margin-bottom: 10px;
   font-weight: bold;
 }
+
+#live-score-container {
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #e9f7ef;
+  border-radius: 8px;
+  color: #28a745;
+}
+
+.final-score-text {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #007bff;
+}
+
 .hidden {
   display: none !important;
 }
+
+/* --- Buttons --- */
 .btn-group {
   display: flex;
   justify-content: space-around;
+  margin-top: 15px;
 }
+
 .btn {
   padding: 16px;
   font-size: 1rem;
@@ -68,30 +130,28 @@ body {
   color: white;
   width: 45%;
   font-weight: bold;
+  transition: opacity 0.2s;
 }
+
+.btn:active {
+  opacity: 0.7;
+}
+
 .btn.correct {
   background: #28a745;
 }
 .btn.wrong {
   background: #dc3545;
 }
+.btn-secondary {
+  background: #6c757d;
+}
+
 .btn.full {
   width: 100%;
   margin-top: 20px;
 }
-.btn-secondary {
-  background: #6c757d;
-}
-#live-score-container {
-  font-size: 0.9rem;
-  margin-bottom: 15px;
-  padding: 10px;
-  background: #e9f7ef;
-  border-radius: 8px;
-  color: #28a745;
-}
-.final-score-text {
-  font-size: 2.5rem;
-  font-weight: bold;
-  color: #007bff;
+
+.btn.retry {
+  background: #ff6b6b;
 }
