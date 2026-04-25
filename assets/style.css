@@ -1,175 +1,118 @@
-/* --- Base Layout --- */
 body {
-  font-family: sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: #f4f7f9;
   margin: 0;
-  padding: 20px;
+  padding: 10px;
+  font-family: sans-serif;
+  background: #f0f2f5;
+  touch-action: none; /* スクロールを止めてスワイプを優先 */
 }
 
 #app {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 400px;
+  margin: 0 auto;
+}
+
+/* 上部のスコア表示 */
+#live-score-container {
   text-align: center;
-  box-sizing: border-box;
-}
-
-/* --- Setup View (File Input) --- */
-.file-label {
-  display: block;
-  padding: 40px 10px;
-  border: 2px dashed #007bff;
+  padding: 15px;
+  background: #f1f5f9; /* 薄いグレーブルーの背景 */
   border-radius: 12px;
-  cursor: pointer;
-  background: #f0f7ff;
-  margin: 20px 0;
-  font-weight: bold;
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: #334155;
+  margin-bottom: 20px;
 }
 
-/* --- Study View (Swipe & Card) --- */
+#live-score {
+  color: #10b981;
+}
+
+/* ★「単語帳」タイトルなどのセンタリング */
+#setup-view h2,
+#result-view h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #1e293b;
+}
+
+/* カードエリアを上部に配置 */
 #swipe-wrapper {
-  width: 100%;
-  min-height: 320px; /* ★ここが 0 になっているとスワイプを検知できません */
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: relative;
-  touch-action: none; /* スマホのスクロールを防止 */
+  width: 100%;
+  height: 220px;
+  margin-top: 10px;
 }
 
 .card {
+  position: absolute;
+  top: 0;
   width: 100%;
-  min-height: 220px;
-  height: auto;
-  padding: 25px;
+  height: 200px;
   background: white;
-  border: 2px solid #007bff;
-  border-radius: 20px;
-  box-sizing: border-box;
+  border: 4px solid #007bff;
+  border-radius: 12px;
 
-  /* Text Style */
-  font-size: 1.8rem;
+  /* 中央配置のための設定 */
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  word-break: break-all; /* 長い英単語の突き抜け防止 */
+  justify-content: center; /* 垂直方向の中央 */
+  align-items: center; /* 水平方向の中央 */
+  text-align: center; /* テキストそのものの中央揃え */
 
-  /* Animation Settings */
-  transition:
-    transform 0.2s ease,
-    opacity 0.2s ease;
-  backface-visibility: hidden;
-  cursor: pointer;
+  padding: 20px;
+  z-index: 10;
+  box-sizing: border-box;
+  will-change: transform;
 }
 
-/* Swipe Animations */
-.swipe-right {
-  transform: translateX(200px) rotate(20deg) !important;
-  opacity: 0 !important;
-}
-
-.swipe-left {
-  transform: translateX(-200px) rotate(-20deg) !important;
-  opacity: 0 !important;
-}
-
-/* --- UI Elements --- */
-#instruction {
-  font-size: 0.8rem;
-  color: #bbb;
-  margin-top: 10px;
+#word-display {
+  font-size: 1.6rem; /* 文字数が多い時のために少しだけ調整 */
+  font-weight: bold;
+  width: 100%; /* 横幅いっぱい使って中央へ */
+  margin-bottom: 10px;
+  line-height: 1.4;
 }
 
 .history-badge {
   font-size: 0.75rem;
-  color: #ff6b6b;
-  margin-bottom: 10px;
-  font-weight: bold;
+  color: #999;
+  margin-bottom: 5px;
 }
 
-#live-score-container {
-  font-size: 0.9rem;
-  margin-bottom: 15px;
-  padding: 10px;
-  background: #e9f7ef;
-  border-radius: 8px;
-  color: #28a745;
-}
-
-.final-score-text {
-  font-size: 2.5rem;
-  font-weight: bold;
-  color: #007bff;
+#instruction {
+  font-size: 0.8rem;
+  color: #444;
+  /* 位置を固定せず、flexの並びとして配置 */
 }
 
 .hidden {
   display: none !important;
 }
 
-/* --- Buttons --- */
-.btn-group {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 15px;
-}
-
+/* セットアップ・結果画面のボタン等 */
 .btn {
-  padding: 16px;
-  font-size: 1rem;
-  cursor: pointer;
-  border-radius: 10px;
+  width: 100%;
+  padding: 12px;
+  margin: 5px 0;
   border: none;
-  background: #007bff;
-  color: white;
-  width: 45%;
+  border-radius: 8px;
+  cursor: pointer;
   font-weight: bold;
-  transition: opacity 0.2s;
 }
-
-.btn:active {
-  opacity: 0.7;
-}
-
-.btn.correct {
-  background: #28a745;
-}
-.btn.wrong {
-  background: #dc3545;
+.btn.full {
+  display: block;
 }
 .btn-secondary {
   background: #6c757d;
+  color: white;
 }
-
-.btn.full {
-  width: 100%;
-  margin-top: 20px;
-}
-
-.btn.retry {
-  background: #ff6b6b;
-}
-
-/* ★追加：新しいカードが下から登場するアニメーション */
-@keyframes slideInFromBottom {
-  from {
-    transform: translateY(50px) scale(0.95); /* 少し下、少し小さく */
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0) scale(1); /* 定位置、元のサイズ */
-    opacity: 1;
-  }
-}
-
-/* アニメーションを適用するクラス */
-.card-new-appear {
-  animation: slideInFromBottom 0.3s ease-out forwards;
-  /* 誤操作防止のため、登場中はクリック等を無効化するとなお良し */
-  pointer-events: none;
+.file-label {
+  display: block;
+  padding: 40px;
+  border: 2px dashed #007bff;
+  background: #f8fbff;
+  text-align: center;
+  border-radius: 12px;
+  cursor: pointer;
 }

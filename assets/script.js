@@ -1,212 +1,126 @@
-let allWords = [];
-let words = [];
-let currentIndex = 0;
-let sessionScore = 0;
-let isFlipped = false;
-let touchStartX = 0;
-let isProcessing = false; // ★ここが漏れていたため追加
+let words = [],
+  currentIndex = 0,
+  sessionScore = 0;
+let isFlipped = false,
+  touchStartX = 0,
+  currentX = 0,
+  isProcessing = false;
 
-const STORAGE_KEY = "tango_master_stats";
-const fileInput = document.getElementById("file-input");
-const wordDisplay = document.getElementById("word-display");
 const card = document.getElementById("card");
-const controls = document.getElementById("controls");
-const swipeWrapper = document.getElementById("swipe-wrapper");
+const wordDisplay = document.getElementById("word-display");
 
-const threshold = 80;
-
-// --- スワイプイベント ---
-swipeWrapper.addEventListener(
+// --- スワイプ制御 ---
+card.addEventListener(
   "touchstart",
   (e) => {
-    touchStartX = e.changedTouches[0].screenX;
+    if (!isFlipped || isProcessing) return;
+    touchStartX = e.touches[0].pageX;
+    card.style.transition = "none";
   },
   { passive: true },
 );
 
-swipeWrapper.addEventListener(
-  "touchend",
+card.addEventListener(
+  "touchmove",
   (e) => {
-    const touchEndX = e.changedTouches[0].screenX;
-    const diff = touchEndX - touchStartX;
+    if (!isFlipped || isProcessing) return;
+    currentX = e.touches[0].pageX - touchStartX;
 
-    // 裏返し前、移動距離不足、または処理中なら無視
-    if (!isFlipped || Math.abs(diff) < threshold || isProcessing) return;
+    // 15度の回転を適用
+    const rotate = Math.min(Math.max(currentX / 10, -15), 15);
+    card.style.transform = `translate3d(${currentX}px, 0, 0) rotate(${rotate}deg)`;
 
-    if (diff > threshold) {
-      animateAndSubmit("right", true); // 右 = 正解
-    } else if (diff < -threshold) {
-      animateAndSubmit("left", false); // 左 = 不正解
-    }
+    if (currentX > 80) card.style.borderColor = "#10b981";
+    else if (currentX < -80) card.style.borderColor = "#ef4444";
+    else card.style.borderColor = "#3b82f6";
   },
   { passive: true },
 );
 
-function animateAndSubmit(direction, isCorrect) {
-  // すでに処理中ならガード（二重発火防止）
-  if (isProcessing) return;
-
-  const swipeClass = direction === "right" ? "swipe-right" : "swipe-left";
-  card.classList.add(swipeClass);
-
-  // アニメーション完了後にロジックを実行
-  setTimeout(() => {
-    card.classList.remove(swipeClass);
-    submitAnswer(isCorrect);
-  }, 200);
-}
-
-// --- 基本ロジック ---
-fileInput.onchange = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    allWords = event.target.result
-      .split(/\r?\n/)
-      .filter((line) => {
-        const p = line.split(/[;,]/);
-        return p.length >= 2 && p[0].trim() !== "" && p[1].trim() !== "";
-      })
-      .map((line) => {
-        const p = line.split(/[;,]/);
-        return { en: p[0].trim(), ja: p[1].trim() };
-      });
-
-    if (allWords.length > 0) {
-      const stats = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-      const hasHistory = allWords.some(
-        (w) => stats[w.en] && stats[w.en].wrong > 0,
-      );
-      const onlyMistakes = hasHistory
-        ? confirm("過去のミスのみ抽出しますか？")
-        : false;
-      setupSession(onlyMistakes);
-    }
-  };
-  reader.readAsText(file, "UTF-8");
-};
-
-function setupSession(filterMistakes) {
-  const stats = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  words = filterMistakes
-    ? allWords.filter((w) => stats[w.en] && stats[w.en].wrong > 0)
-    : [...allWords];
-
-  if (words.length === 0) {
-    if (filterMistakes) alert("過去に間違えた単語はありません。");
-    words = [...allWords];
+card.addEventListener("touchend", () => {
+  if (!isFlipped || isProcessing) return;
+  if (Math.abs(currentX) > 100) {
+    handleSwipe(currentX > 0);
+  } else {
+    card.style.transition = "transform 0.2s ease-out, border-color 0.2s";
+    card.style.transform = "translate3d(0, 0, 0)";
+    card.style.borderColor = "#007bff";
   }
+  currentX = 0;
+});
 
-  words.sort(() => Math.random() - 0.5);
-  currentIndex = 0;
-  sessionScore = 0;
-  startStudy();
-}
+async function handleSwipe(isCorrect) {
+  isProcessing = true;
+  card.style.transition = "transform 0.3s ease-in, opacity 0.3s";
+  card.style.transform = `translate3d(${isCorrect ? 600 : -600}px, 0, 0)`;
+  card.style.opacity = "0";
 
-function startStudy() {
-  document.getElementById("setup-view").classList.add("hidden");
-  document.getElementById("result-view").classList.add("hidden");
-  document.getElementById("study-view").classList.remove("hidden");
-  document.getElementById("total-count").textContent = words.length;
-  showWord();
+  await new Promise((r) => setTimeout(r, 300));
+
+  if (isCorrect) sessionScore++;
+  currentIndex++;
+
+  if (currentIndex < words.length) showWord();
+  else showResult();
 }
 
 function showWord() {
   isFlipped = false;
   isProcessing = false;
+  card.style.transition = "none";
+  card.style.transform = "translate3d(0, 0, 0)";
+  card.style.opacity = "1";
+  card.style.borderColor = "#007bff";
 
-  // ★追加：一度アニメーションクラスを外す（リセット）
-  card.classList.remove("card-new-appear");
-
-  wordDisplay.textContent = words[currentIndex].en;
-  wordDisplay.style.color = "#333";
-  document.getElementById("instruction").textContent = "タップして回答を表示";
-  controls.classList.add("hidden");
+  const word = words[currentIndex];
+  wordDisplay.textContent = word.en;
   document.getElementById("current-idx").textContent = currentIndex + 1;
-
-  const stats = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  const s = stats[words[currentIndex].en];
-  document.getElementById("history-info").textContent = s
-    ? `通算: ○${s.correct} / ×${s.wrong}`
-    : `(初登場)`;
-
-  // ★追加：リフロー（再描画）を強制させてから、アニメーションクラスを付与
-  // これをしないとクラス削除->追加が速すぎてアニメーションが動かない
-  void card.offsetWidth;
-
-  card.classList.add("card-new-appear");
-
-  // ★追加：アニメーション終了後にクラスを削除（pointer-events: noneを解除するため）
-  setTimeout(() => {
-    card.classList.remove("card-new-appear");
-  }, 300); // CSSのアニメーション時間（0.3s）と合わせる
+  document.getElementById("live-score").textContent = sessionScore;
 }
 
 card.onclick = () => {
-  if (isFlipped || isProcessing) return;
+  // すでに反転しているか、スワイプ中（遊びの5px以上）なら何もしない
+  if (isFlipped || isProcessing || Math.abs(currentX) > 5) return;
+
   isFlipped = true;
   wordDisplay.textContent = words[currentIndex].ja;
-  wordDisplay.style.color = "#007bff";
+
+  // ★反転後のスワイプ説明に切り替え
   document.getElementById("instruction").textContent =
-    "スワイプで判定 (右:○ / 左:×)";
-  controls.classList.remove("hidden");
+    "← 不正解だった (スワイプしてください) 正解だった →";
 };
 
-// ボタン用
-document.getElementById("btn-correct").onclick = () => {
-  if (!isFlipped || isProcessing) return;
-  animateAndSubmit("right", true);
-};
-document.getElementById("btn-wrong").onclick = () => {
-  if (!isFlipped || isProcessing) return;
-  animateAndSubmit("left", false);
-};
+// --- CSV読み込み ---
+document.getElementById("file-input").onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    words = event.target.result
+      .split(/\r?\n/)
+      .filter((l) => l.includes(","))
+      .map((l) => {
+        const p = l.split(",");
+        return { en: p[0].trim(), ja: p[1].trim() };
+      })
+      .sort(() => Math.random() - 0.5);
 
-function submitAnswer(isCorrect) {
-  // すでに全ての単語を終えていたら何もしない
-  if (currentIndex >= words.length) return;
-
-  isProcessing = true; // 処理開始
-
-  let stats = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  const word = words[currentIndex].en;
-  if (!stats[word]) stats[word] = { correct: 0, wrong: 0 };
-  isCorrect ? stats[word].correct++ : stats[word].wrong++;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
-
-  if (isCorrect) sessionScore++;
-  document.getElementById("live-score").textContent = sessionScore;
-
-  currentIndex++;
-  if (currentIndex < words.length) {
+    document.getElementById("setup-view").classList.add("hidden");
+    document.getElementById("study-view").classList.remove("hidden");
+    document.getElementById("total-count").textContent = words.length;
     showWord();
-  } else {
-    showResults();
-  }
-}
+  };
+  reader.readAsText(file, "UTF-8");
+};
 
-function showResults() {
+function showResult() {
   document.getElementById("study-view").classList.add("hidden");
   document.getElementById("result-view").classList.remove("hidden");
   document.getElementById("final-score").textContent = Math.round(
     (sessionScore / words.length) * 100,
   );
-  document.getElementById("final-stats").textContent =
-    `全${words.length}問中、正解は${sessionScore}問でした。`;
-
-  const retryBtn = document.getElementById("retry-mistakes-btn");
-  if (sessionScore === words.length) {
-    retryBtn.classList.add("hidden");
-  } else {
-    retryBtn.classList.remove("hidden");
-    retryBtn.onclick = () => setupSession(true);
-  }
 }
 
 function resetAllHistory() {
-  if (confirm("記録をすべて削除しますか？")) {
-    localStorage.removeItem(STORAGE_KEY);
-    alert("記録を削除しました。");
-  }
+  if (confirm("リセット？")) localStorage.clear();
 }
