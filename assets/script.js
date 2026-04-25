@@ -4,12 +4,60 @@ let currentIndex = 0,
   sessionScore = 0,
   isFlipped = false;
 ((touchStartX = 0), (touchEndX = 0));
+const swipeWrapper = document.getElementById("swipe-wrapper");
+const threshold = 80; // 判定距離を少し短くしてサクサク感アップ
 
 const STORAGE_KEY = "tango_master_stats";
 const fileInput = document.getElementById("file-input");
 const wordDisplay = document.getElementById("word-display");
 const card = document.getElementById("card");
 const controls = document.getElementById("controls");
+
+swipeWrapper.addEventListener(
+  "touchstart",
+  (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+  },
+  { passive: true },
+);
+
+swipeWrapper.addEventListener(
+  "touchend",
+  (e) => {
+    const touchEndX = e.changedTouches[0].screenX;
+    const diff = touchEndX - touchStartX;
+
+    // --- ガードロジック ---
+    // 1. 裏返していない（問題表示中）なら何もしない
+    // 2. 移動距離が足りなければ何もしない
+    if (!isFlipped || Math.abs(diff) < threshold) return;
+
+    if (diff > threshold) {
+      // 右スワイプ（正解）
+      animateAndSubmit("right", true);
+    } else {
+      // 左スワイプ（不正解）
+      animateAndSubmit("left", false);
+    }
+  },
+  { passive: true },
+);
+
+function animateAndSubmit(direction, isCorrect) {
+  const moveX = direction === "right" ? 200 : -200;
+  const rotate = direction === "right" ? 15 : -15;
+
+  // カードを飛ばす演出
+  card.style.transform = `translateX(${moveX}px) rotate(${rotate}deg)`;
+  card.style.opacity = "0";
+
+  setTimeout(() => {
+    // 演出が終わったらリセットして次の問題へ
+    card.style.transform = "";
+    card.style.opacity = "1";
+    submitAnswer(isCorrect);
+  }, 200);
+}
 
 // ファイル選択時の処理
 fileInput.onchange = (e) => {
