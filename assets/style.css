@@ -75,14 +75,14 @@ body {
 }
 
 .history-badge {
-  font-size: 0.75rem;
-  color: #999;
+  font-size: 1rem;
+  color: #333;
   margin-bottom: 5px;
 }
 
 #instruction {
-  font-size: 0.8rem;
-  color: #444;
+  font-size: 1rem;
+  color: #333;
   /* 位置を固定せず、flexの並びとして配置 */
 }
 
@@ -104,7 +104,7 @@ body {
   display: block;
 }
 .btn-secondary {
-  background: #6c757d;
+  background: #333;
   color: white;
 }
 .file-label {
