@@ -4,6 +4,7 @@ let currentIndex = 0;
 let sessionScore = 0;
 let isFlipped = false;
 let touchStartX = 0;
+let isProcessing = false; // ★ここが漏れていたため追加
 
 const STORAGE_KEY = "tango_master_stats";
 const fileInput = document.getElementById("file-input");
@@ -29,12 +30,12 @@ swipeWrapper.addEventListener(
     const touchEndX = e.changedTouches[0].screenX;
     const diff = touchEndX - touchStartX;
 
-    // 裏返し前、または移動距離が短い場合は無視
-    if (!isFlipped || Math.abs(diff) < threshold) return;
+    // 裏返し前、移動距離不足、または処理中なら無視
+    if (!isFlipped || Math.abs(diff) < threshold || isProcessing) return;
 
     if (diff > threshold) {
       animateAndSubmit("right", true); // 右 = 正解
-    } else {
+    } else if (diff < -threshold) {
       animateAndSubmit("left", false); // 左 = 不正解
     }
   },
@@ -42,11 +43,13 @@ swipeWrapper.addEventListener(
 );
 
 function animateAndSubmit(direction, isCorrect) {
-  // CSSで定義したクラスを付与
+  // すでに処理中ならガード（二重発火防止）
+  if (isProcessing) return;
+
   const swipeClass = direction === "right" ? "swipe-right" : "swipe-left";
   card.classList.add(swipeClass);
 
-  // アニメーション完了(0.2s)後に次へ
+  // アニメーション完了後にロジックを実行
   setTimeout(() => {
     card.classList.remove(swipeClass);
     submitAnswer(isCorrect);
@@ -89,7 +92,11 @@ function setupSession(filterMistakes) {
   words = filterMistakes
     ? allWords.filter((w) => stats[w.en] && stats[w.en].wrong > 0)
     : [...allWords];
-  if (words.length === 0) words = [...allWords];
+
+  if (words.length === 0) {
+    if (filterMistakes) alert("過去に間違えた単語はありません。");
+    words = [...allWords];
+  }
 
   words.sort(() => Math.random() - 0.5);
   currentIndex = 0;
@@ -107,6 +114,7 @@ function startStudy() {
 
 function showWord() {
   isFlipped = false;
+  isProcessing = false; // ★新しい単語を表示するタイミングでフラグをリセット
   wordDisplay.textContent = words[currentIndex].en;
   wordDisplay.style.color = "#333";
   document.getElementById("instruction").textContent = "タップして回答を表示";
@@ -121,7 +129,7 @@ function showWord() {
 }
 
 card.onclick = () => {
-  if (isFlipped) return;
+  if (isFlipped || isProcessing) return;
   isFlipped = true;
   wordDisplay.textContent = words[currentIndex].ja;
   wordDisplay.style.color = "#007bff";
@@ -130,7 +138,22 @@ card.onclick = () => {
   controls.classList.remove("hidden");
 };
 
+// ボタン用
+document.getElementById("btn-correct").onclick = () => {
+  if (!isFlipped || isProcessing) return;
+  animateAndSubmit("right", true);
+};
+document.getElementById("btn-wrong").onclick = () => {
+  if (!isFlipped || isProcessing) return;
+  animateAndSubmit("left", false);
+};
+
 function submitAnswer(isCorrect) {
+  // すでに全ての単語を終えていたら何もしない
+  if (currentIndex >= words.length) return;
+
+  isProcessing = true; // 処理開始
+
   let stats = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
   const word = words[currentIndex].en;
   if (!stats[word]) stats[word] = { correct: 0, wrong: 0 };
@@ -141,8 +164,11 @@ function submitAnswer(isCorrect) {
   document.getElementById("live-score").textContent = sessionScore;
 
   currentIndex++;
-  if (currentIndex < words.length) showWord();
-  else showResults();
+  if (currentIndex < words.length) {
+    showWord();
+  } else {
+    showResults();
+  }
 }
 
 function showResults() {
@@ -164,6 +190,8 @@ function showResults() {
 }
 
 function resetAllHistory() {
-  if (confirm("記録をすべて削除しますか？"))
+  if (confirm("記録をすべて削除しますか？")) {
     localStorage.removeItem(STORAGE_KEY);
+    alert("記録を削除しました。");
+  }
 }

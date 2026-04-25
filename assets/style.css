@@ -35,13 +35,12 @@ body {
 /* --- Study View (Swipe & Card) --- */
 #swipe-wrapper {
   width: 100%;
-  min-height: 320px; /* カードが縦に伸びてもスワイプ領域を確保 */
+  min-height: 320px; /* ★ここが 0 になっているとスワイプを検知できません */
   display: flex;
   align-items: center;
   justify-content: center;
-  touch-action: none; /* ブラウザのスクロールを止めてスワイプを優先 */
-  perspective: 1000px; /* 3D回転効果の奥行き */
   position: relative;
+  touch-action: none; /* スマホのスクロールを防止 */
 }
 
 .card {
