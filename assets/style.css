@@ -7,6 +7,8 @@ body {
   background: #f4f7f9;
   margin: 0;
   padding: 20px;
+  overscroll-behavior-y: none; /* 引っ張って更新（リロード）を防ぐ */
+  overflow: hidden; /* アプリのような操作感にする場合 */
 }
 
 #app {
@@ -52,29 +54,32 @@ body {
   border: 2px solid #007bff;
   border-radius: 20px;
   box-sizing: border-box;
-
-  /* Text Style */
   font-size: 1.8rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  word-break: break-all; /* 長い英単語の突き抜け防止 */
+  word-break: break-all;
 
-  /* Animation Settings */
-  transition:
-    transform 0.2s ease,
-    opacity 0.2s ease;
+  /* ★ transitionを削除し、backface-visibilityのみ残す */
   backface-visibility: hidden;
   cursor: pointer;
+  position: relative; /* 重なり順を安定させるため追加 */
 }
 
-/* Swipe Animations */
+/* ★判定時：右に飛ばすアニメーション */
 .swipe-right {
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease; /* 飛ばす時だけtransitionを効かせる */
   transform: translateX(200px) rotate(20deg) !important;
   opacity: 0 !important;
 }
 
+/* ★判定時：左に飛ばすアニメーション */
 .swipe-left {
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
   transform: translateX(-200px) rotate(-20deg) !important;
   opacity: 0 !important;
 }
