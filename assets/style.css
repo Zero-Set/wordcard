@@ -154,3 +154,22 @@ body {
 .btn.retry {
   background: #ff6b6b;
 }
+
+/* ★追加：新しいカードが下から登場するアニメーション */
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(50px) scale(0.95); /* 少し下、少し小さく */
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1); /* 定位置、元のサイズ */
+    opacity: 1;
+  }
+}
+
+/* アニメーションを適用するクラス */
+.card-new-appear {
+  animation: slideInFromBottom 0.3s ease-out forwards;
+  /* 誤操作防止のため、登場中はクリック等を無効化するとなお良し */
+  pointer-events: none;
+}

@@ -114,7 +114,11 @@ function startStudy() {
 
 function showWord() {
   isFlipped = false;
-  isProcessing = false; // ★新しい単語を表示するタイミングでフラグをリセット
+  isProcessing = false;
+
+  // ★追加：一度アニメーションクラスを外す（リセット）
+  card.classList.remove("card-new-appear");
+
   wordDisplay.textContent = words[currentIndex].en;
   wordDisplay.style.color = "#333";
   document.getElementById("instruction").textContent = "タップして回答を表示";
@@ -126,6 +130,17 @@ function showWord() {
   document.getElementById("history-info").textContent = s
     ? `通算: ○${s.correct} / ×${s.wrong}`
     : `(初登場)`;
+
+  // ★追加：リフロー（再描画）を強制させてから、アニメーションクラスを付与
+  // これをしないとクラス削除->追加が速すぎてアニメーションが動かない
+  void card.offsetWidth;
+
+  card.classList.add("card-new-appear");
+
+  // ★追加：アニメーション終了後にクラスを削除（pointer-events: noneを解除するため）
+  setTimeout(() => {
+    card.classList.remove("card-new-appear");
+  }, 300); // CSSのアニメーション時間（0.3s）と合わせる
 }
 
 card.onclick = () => {
