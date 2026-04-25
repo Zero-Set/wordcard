@@ -95,3 +95,30 @@ body {
   font-weight: bold;
   color: #007bff;
 }
+
+.swipe-area {
+  perspective: 1000px;
+  position: relative;
+  width: 100%;
+  height: 250px;
+}
+
+.card {
+  position: absolute;
+  width: 100%;
+  backface-visibility: hidden;
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease; /* スワイプ後の戻りや消え方 */
+  touch-action: none; /* ブラウザ標準のスクロールを抑制してスワイプを優先 */
+}
+
+/* スワイプ中の視覚フィードバック用クラス（任意） */
+.swipe-right {
+  transform: translateX(200px) rotate(20deg);
+  opacity: 0;
+}
+.swipe-left {
+  transform: translateX(-200px) rotate(-20deg);
+  opacity: 0;
+}

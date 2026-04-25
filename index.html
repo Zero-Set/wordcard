@@ -32,10 +32,12 @@
           <span id="current-idx">0</span>/<span id="total-count">0</span> |
           正解: <span id="live-score">0</span>
         </div>
-        <div class="card" id="card">
-          <div id="history-info" class="history-badge"></div>
-          <div id="word-display"></div>
-          <div id="instruction">タップで答えを表示</div>
+        <div class="swipe-area">
+          <div class="card" id="card">
+            <div id="history-info" class="history-badge"></div>
+            <div id="word-display"></div>
+            <div id="instruction">タップで回答 / スワイプで判定</div>
+          </div>
         </div>
         <div id="controls" class="hidden">
           <div class="btn-group">
@@ -44,14 +46,26 @@
           </div>
         </div>
       </div>
-
+      <!-- 結果発表画面-->
       <div id="result-view" class="hidden">
         <h2>結果発表</h2>
         <p class="final-score-text"><span id="final-score">0</span>%</p>
         <p id="final-stats"></p>
-        <button class="btn full" onclick="location.reload()">もう一度</button>
+
+        <button
+          id="retry-mistakes-btn"
+          class="btn full"
+          style="background: #ff6b6b; margin-top: 10px"
+        >
+          今回のミスを解き直す
+        </button>
+
+        <button class="btn full" onclick="location.reload()">
+          最初から（全件ロード）
+        </button>
       </div>
     </div>
+
     <script src="assets/script.js"></script>
   </body>
 </html>
