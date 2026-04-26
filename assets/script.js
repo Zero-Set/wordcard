@@ -1,162 +1,239 @@
-let words = [],
-  currentIndex = 0,
-  sessionScore = 0,
-  mistakenWords = [];
-let isFlipped = false,
-  touchStartX = 0,
-  currentX = 0,
-  isProcessing = false;
-
+// --- 定数 ---
 const STORAGE_KEY = "tango_master_stats";
-const card = document.getElementById("card");
-const wordDisplay = document.getElementById("word-display");
+const SWIPE_THRESHOLD = 100;
+const ROTATE_LIMIT = 15;
+const COLORS = {
+  default: "#3b82f6",
+  correct: "#10b981",
+  wrong: "#ef4444",
+};
 
-card.addEventListener(
-  "touchstart",
-  (e) => {
-    if (!isFlipped || isProcessing) return;
-    touchStartX = e.touches[0].pageX;
-    card.style.transition = "none";
+// --- ストレージ管理 ---
+const Storage = {
+  getStats: () => JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"),
+  saveStats: (stats) =>
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stats)),
+  updateWordStat: (wordEn, isCorrect) => {
+    const stats = Storage.getStats();
+    if (!stats[wordEn]) stats[wordEn] = { correct: 0, wrong: 0 };
+    isCorrect ? stats[wordEn].correct++ : stats[wordEn].wrong++;
+    Storage.saveStats(stats);
   },
-  { passive: true },
-);
+};
 
-card.addEventListener(
-  "touchmove",
-  (e) => {
-    if (!isFlipped || isProcessing) return;
-    currentX = e.touches[0].pageX - touchStartX;
-    const rotate = Math.min(Math.max(currentX / 10, -15), 15);
-    card.style.transform = `translate3d(${currentX}px, 0, 0) rotate(${rotate}deg)`;
+// --- アプリケーションの状態 ---
+let state = {
+  words: [],
+  currentIndex: 0,
+  sessionScore: 0,
+  mistakenWords: [],
+  isFlipped: false,
+  isProcessing: false,
+  touch: { startX: 0, currentX: 0 },
+};
 
-    if (currentX > 80) card.style.borderColor = "#10b981";
-    else if (currentX < -80) card.style.borderColor = "#ef4444";
-    else card.style.borderColor = "#3b82f6";
-  },
-  { passive: true },
-);
+// --- DOM要素 ---
+const elements = {
+  card: document.getElementById("card"),
+  wordDisplay: document.getElementById("word-display"),
+  instruction: document.getElementById("instruction"),
+  currentIdx: document.getElementById("current-idx"),
+  totalCount: document.getElementById("total-count"),
+  liveScore: document.getElementById("live-score"),
+  historyInfo: document.getElementById("history-info"),
+  setupView: document.getElementById("setup-view"),
+  studyView: document.getElementById("study-view"),
+  resultView: document.getElementById("result-view"),
+  finalScore: document.getElementById("final-score"),
+  retryBtn: document.getElementById("retry-mistakes-btn"),
+};
 
-card.addEventListener("touchend", () => {
-  if (!isFlipped || isProcessing) return;
-  if (Math.abs(currentX) > 100) {
-    handleSwipe(currentX > 0);
-  } else {
-    card.style.transition = "transform 0.2s ease-out, border-color 0.2s";
-    card.style.transform = "translate3d(0, 0, 0) rotate(0deg)";
-    card.style.borderColor = "#3b82f6";
-  }
-  currentX = 0;
-});
+// --- メインロジック ---
 
+/** セッション開始 */
+function startSession(targetWords) {
+  state = {
+    ...state,
+    words: [...targetWords].sort(() => Math.random() - 0.5),
+    currentIndex: 0,
+    sessionScore: 0,
+    mistakenWords: [],
+    isFlipped: false,
+    isProcessing: false,
+  };
+
+  elements.setupView.classList.add("hidden");
+  elements.resultView.classList.add("hidden");
+  elements.studyView.classList.remove("hidden");
+  elements.totalCount.textContent = state.words.length;
+  showWord();
+}
+
+/** 単語の表示 */
+function showWord() {
+  const currentWord = state.words[state.currentIndex];
+  state.isFlipped = false;
+  state.isProcessing = false;
+
+  // カードのリセット
+  updateCardStyle({
+    x: 0,
+    rotate: 0,
+    opacity: 1,
+    color: COLORS.default,
+    transition: "none",
+  });
+
+  // テキスト更新
+  elements.wordDisplay.textContent = currentWord.en;
+  elements.instruction.textContent = "タップで回答を表示";
+  elements.currentIdx.textContent = state.currentIndex + 1;
+  elements.liveScore.textContent = state.sessionScore;
+
+  // 履歴表示
+  const stats = Storage.getStats()[currentWord.en];
+  elements.historyInfo.textContent = stats
+    ? `通算: ×${stats.wrong} / ○${stats.correct}`
+    : "(初登場)";
+}
+
+/** スワイプ処理 */
 async function handleSwipe(isCorrect) {
-  isProcessing = true;
-  card.style.transition = "transform 0.3s ease-in, opacity 0.3s";
-  const finalRotate = isCorrect ? 20 : -20;
-  card.style.transform = `translate3d(${isCorrect ? 600 : -600}px, 0, 0) rotate(${finalRotate}deg)`;
-  card.style.opacity = "0";
+  state.isProcessing = true;
+  const currentWord = state.words[state.currentIndex];
 
-  let stats = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  const wordEn = words[currentIndex].en;
-  if (!stats[wordEn]) stats[wordEn] = { correct: 0, wrong: 0 };
+  // アニメーション
+  updateCardStyle({
+    x: isCorrect ? 600 : -600,
+    rotate: isCorrect ? 20 : -20,
+    opacity: 0,
+    transition: "transform 0.3s ease-in, opacity 0.3s",
+  });
 
+  // データ更新
+  Storage.updateWordStat(currentWord.en, isCorrect);
   if (isCorrect) {
-    sessionScore++;
-    stats[wordEn].correct++;
+    state.sessionScore++;
   } else {
-    mistakenWords.push(words[currentIndex]);
-    stats[wordEn].wrong++;
+    state.mistakenWords.push(currentWord);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
 
   await new Promise((r) => setTimeout(r, 300));
 
-  currentIndex++;
-  if (currentIndex < words.length) showWord();
-  else showResult();
+  state.currentIndex++;
+  state.currentIndex < state.words.length ? showWord() : showResult();
 }
 
-function showWord() {
-  isFlipped = false;
-  isProcessing = false;
-  card.style.transition = "none";
-  card.style.transform = "translate3d(0, 0, 0) rotate(0deg)";
-  card.style.opacity = "1";
-  card.style.borderColor = "#3b82f6";
+/** 結果表示 */
+function showResult() {
+  elements.studyView.classList.add("hidden");
+  elements.resultView.classList.remove("hidden");
+  elements.finalScore.textContent = Math.round(
+    (state.sessionScore / state.words.length) * 100,
+  );
 
-  const currentWord = words[currentIndex];
-  wordDisplay.textContent = currentWord.en;
-
-  const stats = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  const s = stats[currentWord.en];
-  document.getElementById("history-info").textContent = s
-    ? `通算: ○${s.correct} / ×${s.wrong}`
-    : `(初登場)`;
-
-  document.getElementById("instruction").textContent = "タップで回答を表示";
-  document.getElementById("current-idx").textContent = currentIndex + 1;
-  document.getElementById("live-score").textContent = sessionScore;
+  const hasMistakes = state.mistakenWords.length > 0;
+  elements.retryBtn.classList.toggle("hidden", !hasMistakes);
+  if (hasMistakes) {
+    elements.retryBtn.onclick = () => startSession(state.mistakenWords);
+  }
 }
 
-card.onclick = () => {
-  if (isFlipped || isProcessing || Math.abs(currentX) > 5) return;
-  isFlipped = true;
-  wordDisplay.textContent = words[currentIndex].ja;
-  document.getElementById("instruction").textContent =
-    "← 不正解だった / 正解だった →";
+/** カードのスタイル一括更新用ヘルパー */
+function updateCardStyle({ x, rotate, opacity, color, transition }) {
+  if (transition !== undefined) elements.card.style.transition = transition;
+  if (x !== undefined || rotate !== undefined) {
+    elements.card.style.transform = `translate3d(${x || 0}px, 0, 0) rotate(${rotate || 0}deg)`;
+  }
+  if (opacity !== undefined) elements.card.style.opacity = opacity;
+  if (color !== undefined) elements.card.style.borderColor = color;
+}
+
+// --- イベントリスナー ---
+
+// カードクリック（裏返し）
+elements.card.onclick = () => {
+  if (
+    state.isFlipped ||
+    state.isProcessing ||
+    Math.abs(state.touch.currentX) > 5
+  )
+    return;
+  state.isFlipped = true;
+  elements.wordDisplay.textContent = state.words[state.currentIndex].ja;
+  elements.instruction.textContent = "← 不正解だった / 正解だった →";
 };
 
+// タッチイベント
+elements.card.addEventListener(
+  "touchstart",
+  (e) => {
+    if (!state.isFlipped || state.isProcessing) return;
+    state.touch.startX = e.touches[0].pageX;
+    updateCardStyle({ transition: "none" });
+  },
+  { passive: true },
+);
+
+elements.card.addEventListener(
+  "touchmove",
+  (e) => {
+    if (!state.isFlipped || state.isProcessing) return;
+    const diff = e.touches[0].pageX - state.touch.startX;
+    state.touch.currentX = diff;
+
+    const rotate = Math.min(Math.max(diff / 10, -ROTATE_LIMIT), ROTATE_LIMIT);
+    let color = COLORS.default;
+    if (diff > 80) color = COLORS.correct;
+    else if (diff < -80) color = COLORS.wrong;
+
+    updateCardStyle({ x: diff, rotate, color });
+  },
+  { passive: true },
+);
+
+elements.card.addEventListener("touchend", () => {
+  if (!state.isFlipped || state.isProcessing) return;
+
+  if (Math.abs(state.touch.currentX) > SWIPE_THRESHOLD) {
+    handleSwipe(state.touch.currentX > 0);
+  } else {
+    updateCardStyle({
+      x: 0,
+      rotate: 0,
+      color: COLORS.default,
+      transition: "transform 0.2s ease-out, border-color 0.2s",
+    });
+  }
+  state.touch.currentX = 0;
+});
+
+// ファイル読み込み
 document.getElementById("file-input").onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
   const reader = new FileReader();
   reader.onload = (event) => {
     const rawWords = event.target.result
       .split(/\r?\n/)
       .filter((l) => l.includes(","))
       .map((l) => {
-        const p = l.split(",");
-        return { en: p[0].trim(), ja: p[1].trim() };
+        const [en, ja] = l.split(",");
+        return { en: en.trim(), ja: ja.trim() };
       });
 
-    const stats = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    const hasHistory = rawWords.some(
-      (w) => stats[w.en] && stats[w.en].wrong > 0,
-    );
-    const onlyMistakes =
-      hasHistory && confirm("過去のミスのみ抽出しますか？") ? true : false;
+    const stats = Storage.getStats();
+    const mistakeCount = rawWords.filter((w) => stats[w.en]?.wrong > 0).length;
 
-    const targetWords = onlyMistakes
-      ? rawWords.filter((w) => stats[w.en] && stats[w.en].wrong > 0)
-      : rawWords;
-
+    let targetWords = rawWords;
+    if (
+      mistakeCount > 0 &&
+      confirm(`過去にミスした単語が${mistakeCount}件あります。抽出しますか？`)
+    ) {
+      targetWords = rawWords.filter((w) => stats[w.en]?.wrong > 0);
+    }
     startSession(targetWords);
   };
-  reader.readAsText(e.target.files[0], "UTF-8");
+  reader.readAsText(file, "UTF-8");
 };
-
-function startSession(targetWords) {
-  words = [...targetWords].sort(() => Math.random() - 0.5);
-  currentIndex = 0;
-  sessionScore = 0;
-  mistakenWords = [];
-  document.getElementById("setup-view").classList.add("hidden");
-  document.getElementById("result-view").classList.add("hidden");
-  document.getElementById("study-view").classList.remove("hidden");
-  document.getElementById("total-count").textContent = words.length;
-  showWord();
-}
-
-function showResult() {
-  document.getElementById("study-view").classList.add("hidden");
-  document.getElementById("result-view").classList.remove("hidden");
-  document.getElementById("final-score").textContent = Math.round(
-    (sessionScore / words.length) * 100,
-  );
-
-  // ミスした単語の解き直しボタンを有効化
-  const retryBtn = document.getElementById("retry-mistakes-btn");
-  if (mistakenWords.length > 0) {
-    retryBtn.classList.remove("hidden");
-    retryBtn.onclick = () => startSession(mistakenWords);
-  } else {
-    retryBtn.classList.add("hidden");
-  }
-}
