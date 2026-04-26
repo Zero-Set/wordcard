@@ -13,7 +13,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0 # ← ここに挿入します。0を指定することで全履歴を取得します。
       - name: Get current time
         id: date
         run: echo "datetime=$(date +'%Y/%m/%d %H:%M:%S')" >> $GITHUB_OUTPUT
