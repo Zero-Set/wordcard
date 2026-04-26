@@ -13,11 +13,39 @@ const Storage = {
   getStats: () => JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"),
   saveStats: (stats) =>
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stats)),
+
   updateWordStat: (wordEn, isCorrect) => {
     const stats = Storage.getStats();
-    if (!stats[wordEn]) stats[wordEn] = { correct: 0, wrong: 0 };
-    isCorrect ? stats[wordEn].correct++ : stats[wordEn].wrong++;
+    // 構造に recentWrong を追加
+    if (!stats[wordEn])
+      stats[wordEn] = { correct: 0, wrong: 0, recentWrong: 0 };
+
+    if (isCorrect) {
+      stats[wordEn].correct++;
+      stats[wordEn].recentWrong = 0; // 正解したら直近の未正解リストから除外
+    } else {
+      stats[wordEn].wrong++;
+      stats[wordEn].recentWrong = 1; // 間違えたら直近フラグを立てる
+    }
     Storage.saveStats(stats);
+  },
+
+  // 直近の苦手フラグだけ全クリア（通算成績は残す）
+  clearRecentFlags: () => {
+    const stats = Storage.getStats();
+    Object.keys(stats).forEach((word) => {
+      stats[word].recentWrong = 0;
+    });
+    Storage.saveStats(stats);
+    alert("直近の未正解データをリセットしました（通算成績は維持されます）");
+  },
+
+  // データを完全に物理削除
+  factoryReset: () => {
+    if (confirm("すべての通算成績と設定を完全に消去しますか？")) {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload(); // アプリをリセット
+    }
   },
 };
 
@@ -92,9 +120,13 @@ function showWord() {
 
   // 履歴表示
   const stats = Storage.getStats()[currentWord.en];
-  elements.historyInfo.textContent = stats
-    ? `通算: ×${stats.wrong} / ○${stats.correct}`
-    : "(初登場)";
+  // 表示例: 通算: ×5 / ○12 (直近: 未正解)
+  let historyText = "(初登場)";
+  if (stats) {
+    const recentStatus = stats.recentWrong > 0 ? " [未正解]" : "";
+    historyText = `通算: ×${stats.wrong} / ○${stats.correct}${recentStatus}`;
+  }
+  elements.historyInfo.textContent = historyText;
 }
 
 /** スワイプ処理 */
@@ -208,7 +240,6 @@ elements.card.addEventListener("touchend", () => {
   state.touch.currentX = 0;
 });
 
-// ファイル読み込み
 document.getElementById("file-input").onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -223,27 +254,26 @@ document.getElementById("file-input").onchange = (e) => {
         return { en: en.trim(), ja: ja.trim() };
       });
 
+    if (rawWords.length === 0) return;
+
     const stats = Storage.getStats();
 
-    // ここのカウント条件を修正
-    const targetCandidateCount = rawWords.filter((w) => {
+    // 仕様変更：直近で間違えた(recentWrong > 0) or 初出(statsなし) を抽出
+    const mistakeWords = rawWords.filter((w) => {
       const s = stats[w.en];
-      return !s || s.wrong > 0; // 「未着手」または「ミスあり」
-    }).length;
+      return s ? s.recentWrong > 0 : true;
+    });
 
+    const mistakeCount = mistakeWords.length;
     let targetWords = rawWords;
-    if (
-      targetCandidateCount > 0 &&
-      confirm(
-        `未正解の単語が${targetCandidateCount}件あります。これらのみ学習しますか？`,
-      )
-    ) {
-      // ここのフィルタリング条件も同様に修正
-      targetWords = rawWords.filter((w) => {
-        const s = stats[w.en];
-        return !s || s.wrong > 0;
-      });
+
+    // 「全件が未正解」の時はメッセージを出さない
+    if (mistakeCount > 0 && mistakeCount !== rawWords.length) {
+      if (confirm(`未正解の単語が${mistakeCount}件あります。抽出しますか？`)) {
+        targetWords = mistakeWords;
+      }
     }
+
     startSession(targetWords);
   };
   reader.readAsText(file, "UTF-8");
