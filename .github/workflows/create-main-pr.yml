@@ -10,6 +10,9 @@ jobs:
   create-pr:
     if: github.event.pull_request.merged == true # かつ、マージされた場合のみ
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
