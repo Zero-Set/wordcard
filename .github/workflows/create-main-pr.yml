@@ -1,12 +1,14 @@
 name: Create Pull Request to Main
 
 on:
-  push:
+  pull_request:
     branches:
       - develop
+    types: [closed] # PRが閉じられた時
 
 jobs:
   create-pr:
+    if: github.event.pull_request.merged == true # かつ、マージされた場合のみ
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
