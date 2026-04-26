@@ -224,14 +224,25 @@ document.getElementById("file-input").onchange = (e) => {
       });
 
     const stats = Storage.getStats();
-    const mistakeCount = rawWords.filter((w) => stats[w.en]?.wrong > 0).length;
+
+    // ここのカウント条件を修正
+    const targetCandidateCount = rawWords.filter((w) => {
+      const s = stats[w.en];
+      return !s || s.wrong > 0; // 「未着手」または「ミスあり」
+    }).length;
 
     let targetWords = rawWords;
     if (
-      mistakeCount > 0 &&
-      confirm(`過去にミスした単語が${mistakeCount}件あります。抽出しますか？`)
+      targetCandidateCount > 0 &&
+      confirm(
+        `未正解の単語が${targetCandidateCount}件あります。これらのみ学習しますか？`,
+      )
     ) {
-      targetWords = rawWords.filter((w) => stats[w.en]?.wrong > 0);
+      // ここのフィルタリング条件も同様に修正
+      targetWords = rawWords.filter((w) => {
+        const s = stats[w.en];
+        return !s || s.wrong > 0;
+      });
     }
     startSession(targetWords);
   };
