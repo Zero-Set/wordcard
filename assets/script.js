@@ -113,13 +113,13 @@ function showWord() {
   });
 
   // テキスト更新
-  elements.wordDisplay.textContent = currentWord.en;
+  elements.wordDisplay.textContent = currentWord.problem;
   elements.instruction.textContent = "タップで回答を表示";
   elements.currentIdx.textContent = state.currentIndex + 1;
   elements.liveScore.textContent = state.sessionScore;
 
   // 履歴表示
-  const stats = Storage.getStats()[currentWord.en];
+  const stats = Storage.getStats()[currentWord.id];
   // 表示例: 通算: ×5 / ○12 (直近: 未正解)
   let historyText = "(初登場)";
   if (stats) {
@@ -143,7 +143,7 @@ async function handleSwipe(isCorrect) {
   });
 
   // データ更新
-  Storage.updateWordStat(currentWord.en, isCorrect);
+  Storage.updateWordStat(currentWord.id, isCorrect);
   if (isCorrect) {
     state.sessionScore++;
   } else {
@@ -192,7 +192,7 @@ elements.card.onclick = () => {
   )
     return;
   state.isFlipped = true;
-  elements.wordDisplay.textContent = state.words[state.currentIndex].ja;
+  elements.wordDisplay.textContent = state.words[state.currentIndex].answer;
   elements.instruction.textContent = "← 不正解だった / 正解だった →";
 };
 
@@ -250,8 +250,13 @@ document.getElementById("file-input").onchange = (e) => {
       .split(/\r?\n/)
       .filter((l) => l.includes(","))
       .map((l) => {
-        const [en, ja] = l.split(",");
-        return { en: en.trim(), ja: ja.trim() };
+        // 3カラムに分割（ID, 問題, 回答）
+        const parts = l.split(",");
+        return {
+          id: parts[0].trim(), // 判定用のID（単語）
+          problem: parts[1].trim(), // 表示用の問題文（長文）
+          answer: parts[2].trim(), // 裏返した時の正解（意味）
+        };
       });
 
     if (rawWords.length === 0) return;
@@ -260,7 +265,8 @@ document.getElementById("file-input").onchange = (e) => {
 
     // 仕様変更：直近で間違えた(recentWrong > 0) or 初出(statsなし) を抽出
     const mistakeWords = rawWords.filter((w) => {
-      const s = stats[w.en];
+      // 統計データを参照する
+      const s = stats[w.id];
       return s ? s.recentWrong > 0 : true;
     });
 
