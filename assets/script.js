@@ -1,36 +1,81 @@
-// script.js の一番最初
-// 音声認識
+// --- 音声認識の初期化と制御 ---
 let recognition = null;
-let isRecognitionManualStop = false; //手動でstopさせたときにtrueとするが、実装はまだ
+let isRecognitionManualStop = false;
 
-(function initSpeech() {
+function ensureSpeechInitialized() {
+  if (recognition) return recognition;
+
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (SpeechRecognition) {
-    recognition = new SpeechRecognition();
-    recognition.lang = "ja-JP"; // 日本語設定
-    recognition.continuous = true;
-    // ↓ ここを true にすると、喋っている途中の文字も拾えるようになり、反応が速くなります
-    recognition.interimResults = true;
-
-    recognition.onresult = (event) => {
-      // interimResults: true の場合、確定したものだけを処理する
-      let transcript = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          transcript = event.results[i][0].transcript;
-        }
-      }
-
-      if (transcript) {
-        state.lastTranscript = transcript;
-        if (!state.isFlipped) handleFlip();
-      }
-    };
-  } else {
-    console.warn("Speech Recognition: Not supported in this browser");
+  if (!SpeechRecognition) {
+    // mainに上げた後、iPhoneでこれが出たら「ブラウザ環境」の問題（HTTPSでない、またはアプリ内ブラウザ）
+    console.error("SpeechRecognition is NOT available in this browser.");
+    alert(
+      "音声認識がサポートされていません。HTTPS接続とSafariを確認してください。",
+    );
+    return;
   }
-})();
+
+  console.log("SpeechRecognition detected:", SpeechRecognition.name);
+
+  recognition = new SpeechRecognition();
+  recognition.lang = "ja-JP";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (event) => {
+    let transcript = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        transcript = event.results[i][0].transcript;
+      }
+    }
+    if (transcript) {
+      state.lastTranscript = transcript;
+      if (!state.isFlipped) handleFlip();
+    }
+  };
+
+  recognition.onstart = () => {
+    const statusEl = document.getElementById("mic-status");
+    if (statusEl) {
+      statusEl.textContent = "🎙️ Listening...";
+      statusEl.classList.add("active");
+    }
+  };
+
+  recognition.onend = () => {
+    const statusEl = document.getElementById("mic-status");
+    if (statusEl) {
+      statusEl.textContent = "打合せ中..."; // 停止中
+      statusEl.classList.remove("active");
+    }
+
+    // 手動停止でなく、かつ学習中の場合のみ再起動を試みる
+    if (
+      !isRecognitionManualStop &&
+      state.currentIndex < state.words.length &&
+      !state.isFlipped
+    ) {
+      safeStartRecognition();
+    }
+  };
+
+  return recognition;
+}
+
+/** 二重起動を防ぐ安全なスタート関数 */
+function safeStartRecognition() {
+  if (!recognition) return;
+  try {
+    // 状態を確認できないため、一旦止めてから開始するか、
+    // エラーをキャッチして無視する運用にします
+    recognition.start();
+  } catch (e) {
+    // すでに動いている場合は DOMException が発生するが無視してOK
+    console.log("Recognition is already running or starting.");
+  }
+}
 
 // --- 定数 ---
 const STORAGE_KEY = "tango_master_stats";
@@ -108,28 +153,6 @@ const elements = {
   resultView: document.getElementById("result-view"),
   finalScore: document.getElementById("final-score"),
   retryBtn: document.getElementById("retry-mistakes-btn"),
-};
-
-recognition.onstart = () => {
-  // 画面に「マイク受付中...」というバッジを出す
-  const statusEl = document.getElementById("mic-status");
-  if (statusEl) {
-    statusEl.textContent =
-      "🎙️ Listening...（音声は回答のみに使用し保存しません。）";
-    statusEl.classList.add("active");
-  }
-};
-
-recognition.onend = () => {
-  if (!isRecognitionManualStop) {
-    recognition.start(); // 意図しない停止なら再起動
-  }
-  isRecognitionManualStop = false; // フラグを戻す
-  const statusEl = document.getElementById("mic-status");
-  if (statusEl) {
-    statusEl.textContent = "🎤 Mic Off";
-    statusEl.classList.remove("active");
-  }
 };
 
 // --- メインロジック ---
@@ -376,59 +399,60 @@ document.getElementById("file-input").onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
-
-  // onload は 1回だけ定義する
-  reader.onload = (event) => {
-    // 1. CSVパース（4カラム対応版にアップデート）
-    const rawWords = event.target.result
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.split(",").length >= 3)
-      .map((line) => {
-        const parts = line.split(",");
-        const id = parts[0].trim();
-        const answer = parts[parts.length - 1].trim();
-        // 4カラム目が補足、それ以外（中間）が問題文
-        const supplement =
-          parts.length >= 4 ? parts[parts.length - 2].trim() : "";
-        const problem = parts
-          .slice(1, parts.length - (parts.length >= 4 ? 2 : 1))
-          .join(",")
-          .trim();
-        return { id, problem, answer, supplement };
-      });
-
-    if (rawWords.length === 0) return;
-
-    // 2. 未正解単語の抽出ロジック
-    const stats = Storage.getStats();
-    const mistakeWords = rawWords.filter((w) => {
-      const s = stats[w.id];
-      return s ? s.recentWrong > 0 : true;
-    });
-
-    const mistakeCount = mistakeWords.length;
-    let targetWords = rawWords;
-
-    if (mistakeCount > 0 && mistakeCount !== rawWords.length) {
-      if (confirm(`未正解の単語が${mistakeCount}件あります。抽出しますか？`)) {
-        targetWords = mistakeWords;
-      }
+  // --- 【修正】ここではまだ start() しない！初期化(ensure)だけに留める ---
+  ensureSpeechInitialized();
+  try {
+    if (recognition) {
+      recognition.start();
+      console.log("マイク起動命令を送信しました");
     }
+  } catch (err) {
+    console.log("マイクはすでに動いているか、許可待ちです");
+  }
 
-    // 3. セッション開始
-    startSession(targetWords);
-
-    // 4. 【重要】音声認識をここでスタート
-    // ユーザー操作（ファイル選択）の直後なので権限が通る
+  const reader = new FileReader();
+  reader.onload = (event) => {
     try {
-      if (recognition) {
-        recognition.start();
+      // 1. CSVパース
+      const rawWords = event.target.result
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.split(",").length >= 3)
+        .map((line) => {
+          const parts = line.split(",");
+          const id = parts[0].trim();
+          const answer = parts[parts.length - 1].trim();
+          const hasSupp = parts.length >= 4;
+          const supplement = hasSupp ? parts[parts.length - 2].trim() : "";
+          const problem = parts
+            .slice(1, parts.length - (hasSupp ? 2 : 1))
+            .join(",")
+            .trim();
+          return { id, problem, answer, supplement };
+        });
+
+      if (rawWords.length === 0) return;
+
+      // 2. 未正解抽出
+      const stats = Storage.getStats();
+      const mistakeWords = rawWords.filter((w) => stats[w.id]?.recentWrong > 0);
+
+      let targetWords = rawWords;
+      if (mistakeWords.length > 0 && mistakeWords.length !== rawWords.length) {
+        // --- 【iPhone対策2】confirmがブロックされる可能性を考慮し、処理を止めない ---
+        if (
+          window.confirm(
+            `未正解の単語が${mistakeWords.length}件あります。抽出しますか？`,
+          )
+        ) {
+          targetWords = mistakeWords;
+        }
       }
-    } catch (err) {
-      // すでに起動している場合のエラー（InvalidStateError）を回避
-      console.log("Speech Recognition: Already running or error", err);
+
+      // 3. セッション開始
+      startSession(targetWords);
+    } catch (error) {
+      console.error("Parse Error:", error);
     }
   };
 
