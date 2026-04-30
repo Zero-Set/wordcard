@@ -105,6 +105,24 @@ h2 {
   word-wrap: break-word;
 }
 
+/* 裏面になった時だけ、転記された「表面の内容」を表示する */
+#word-display.is-flipped::before {
+  content: "Q: " attr(data-problem); /* ここで転記内容を表示 */
+  display: block;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 5px;
+}
+
+#word-display.is-flipped::after {
+  /* 音声入力があれば、それも表示 */
+  content: "Voice: " attr(data-transcript);
+  display: block;
+  font-size: 0.9rem;
+  color: #ef4444;
+  margin-top: 5px;
+}
+
 #history-info {
   font-size: 0.9rem;
   color: var(--text-sub);
