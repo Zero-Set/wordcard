@@ -94,7 +94,7 @@ function ensureSpeechInitialized() {
 function handleMicManualStop() {
   isRecognitionManualStop = true; // 手動停止フラグを立てる
   if (recognition) {
-    recognition.stop(); // 音声認識エンジンを停止
+    recognition.abort(); // stop() ではなく abort() に変更
   }
 
   // UIの更新
