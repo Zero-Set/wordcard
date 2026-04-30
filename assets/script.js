@@ -252,7 +252,7 @@ async function handleSwipe(isCorrect) {
 function showWord() {
   // 1. 必要な要素とデータの取得（constを冒頭に集約）
   const current = state.words[state.currentIndex];
-  const wd = document.getElementById("word-display");
+  const wd = elements.wordDisplay;
   const statusEl = document.getElementById("mic-status");
   const stopBtn = document.getElementById("mic-stop-btn");
   const reconnectBtn = document.getElementById("mic-reconnect");
@@ -275,7 +275,7 @@ function showWord() {
   // 4. カード表示のリセット
   if (wd) {
     wd.classList.remove("is-flipped");
-    delete wd.dataset.problem;
+    wd.dataset.problem = current.problem;
     delete wd.dataset.transcript;
     wd.textContent = current.problem;
   }
@@ -332,7 +332,7 @@ function showWord() {
 function handleFlip() {
   const current = state.words[state.currentIndex];
   const wd = document.getElementById("word-display");
-  const instruction = document.getElementById("instruction");
+  const instruction = elements.instruction;
 
   if (state.isFlipped) return;
   state.isFlipped = true;
