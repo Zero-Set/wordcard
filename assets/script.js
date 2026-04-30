@@ -1,36 +1,94 @@
-// script.js の一番最初
-// 音声認識
+// --- 音声認識の初期化と制御 ---
 let recognition = null;
-let isRecognitionManualStop = false; //手動でstopさせたときにtrueとするが、実装はまだ
+let isRecognitionManualStop = false;
 
-(function initSpeech() {
+function ensureSpeechInitialized() {
+  if (recognition) return recognition;
+
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (SpeechRecognition) {
-    recognition = new SpeechRecognition();
-    recognition.lang = "ja-JP"; // 日本語設定
-    recognition.continuous = true;
-    // ↓ ここを true にすると、喋っている途中の文字も拾えるようになり、反応が速くなります
-    recognition.interimResults = true;
-
-    recognition.onresult = (event) => {
-      // interimResults: true の場合、確定したものだけを処理する
-      let transcript = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          transcript = event.results[i][0].transcript;
-        }
-      }
-
-      if (transcript) {
-        state.lastTranscript = transcript;
-        if (!state.isFlipped) handleFlip();
-      }
-    };
-  } else {
-    console.warn("Speech Recognition: Not supported in this browser");
+  if (!SpeechRecognition) {
+    console.error("SpeechRecognition is NOT available in this browser.");
+    alert(
+      "音声認識がサポートされていません。Safari（iOS）等を使用してください。",
+    );
+    return;
   }
-})();
+
+  recognition = new SpeechRecognition();
+  recognition.lang = "ja-JP";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (event) => {
+    if (state.isFlipped) return; // 回答済みの場合は無視
+    // --- ここから既存のロジックを維持 ---
+    let transcript = "";
+    let interimTranscript = ""; // UI表示用に追加するだけ
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        transcript = event.results[i][0].transcript;
+      } else {
+        interimTranscript += event.results[i][0].transcript; // 途中経過用
+      }
+    }
+
+    // --- UIへのフィードバック（ここだけ追加） ---
+    const statusEl = document.getElementById("mic-status");
+    if (statusEl) {
+      if (interimTranscript) {
+        statusEl.textContent = `🎙️ ${interimTranscript}...`; // 喋っている最中
+      } else if (transcript) {
+        statusEl.textContent = `✅ ${transcript}`; // 確定した瞬間
+      }
+    }
+
+    if (transcript) {
+      state.lastTranscript = transcript;
+      handleFlip(); // 判定ロジックへ
+    }
+  };
+
+  recognition.onstart = () => {
+    const statusEl = document.getElementById("mic-status");
+    const reconnectBtn = document.getElementById("mic-reconnect");
+    if (statusEl) {
+      statusEl.textContent = "🎙️ Listening...";
+      statusEl.classList.add("active");
+      statusEl.style.color = "#2ecc71"; // 稼働中は緑色
+    }
+    if (reconnectBtn) reconnectBtn.style.display = "none"; // ボタンを隠す
+  };
+
+  recognition.onend = () => {
+    const statusEl = document.getElementById("mic-status");
+    const reconnectBtn = document.getElementById("mic-reconnect");
+
+    if (statusEl) {
+      statusEl.textContent = "❌ 停止中";
+      statusEl.className = "error";
+      if (reconnectBtn) reconnectBtn.style.display = "inline-block";
+    }
+  };
+
+  return recognition;
+}
+
+// ボタンから呼ばれる手動復旧関数
+function handleMicReconnect() {
+  isRecognitionManualStop = false;
+  safeStartRecognition();
+}
+
+function safeStartRecognition() {
+  if (!recognition) return;
+  try {
+    recognition.start();
+  } catch (e) {
+    console.log("Recognition already started or failed:", e);
+  }
+}
 
 // --- 定数 ---
 const STORAGE_KEY = "tango_master_stats";
@@ -50,36 +108,21 @@ const Storage = {
 
   updateWordStat: (wordEn, isCorrect) => {
     const stats = Storage.getStats();
-    // 構造に recentWrong を追加
-    if (!stats[wordEn])
+    if (!stats[wordEn]) {
       stats[wordEn] = { correct: 0, wrong: 0, recentWrong: 0 };
+    }
 
     if (isCorrect) {
       stats[wordEn].correct++;
-      stats[wordEn].recentWrong = 0; // 正解したら直近の未正解リストから除外
+      // 【ロジック変更】復習を確実にするため、ここでは recentWrong を 0 に固定せず、
+      // ユーザーが「クリア」を選択するか、特定の条件を満たすまで保持する設計も検討。
+      // 今回はシンプルに 0 に戻しますが、タイミングを startSession 直後に移すのが安全です。
+      stats[wordEn].recentWrong = 0;
     } else {
       stats[wordEn].wrong++;
-      stats[wordEn].recentWrong = 1; // 間違えたら直近フラグを立てる
+      stats[wordEn].recentWrong = 1;
     }
     Storage.saveStats(stats);
-  },
-
-  // 直近の苦手フラグだけ全クリア（通算成績は残す）
-  clearRecentFlags: () => {
-    const stats = Storage.getStats();
-    Object.keys(stats).forEach((word) => {
-      stats[word].recentWrong = 0;
-    });
-    Storage.saveStats(stats);
-    alert("直近の未正解データをリセットしました（通算成績は維持されます）");
-  },
-
-  // データを完全に物理削除
-  factoryReset: () => {
-    if (confirm("すべての通算成績と設定を完全に消去しますか？")) {
-      localStorage.removeItem(STORAGE_KEY);
-      location.reload(); // アプリをリセット
-    }
   },
 };
 
@@ -110,28 +153,6 @@ const elements = {
   retryBtn: document.getElementById("retry-mistakes-btn"),
 };
 
-recognition.onstart = () => {
-  // 画面に「マイク受付中...」というバッジを出す
-  const statusEl = document.getElementById("mic-status");
-  if (statusEl) {
-    statusEl.textContent =
-      "🎙️ Listening...（音声は回答のみに使用し保存しません。）";
-    statusEl.classList.add("active");
-  }
-};
-
-recognition.onend = () => {
-  if (!isRecognitionManualStop) {
-    recognition.start(); // 意図しない停止なら再起動
-  }
-  isRecognitionManualStop = false; // フラグを戻す
-  const statusEl = document.getElementById("mic-status");
-  if (statusEl) {
-    statusEl.textContent = "🎤 Mic Off";
-    statusEl.classList.remove("active");
-  }
-};
-
 // --- メインロジック ---
 
 /** セッション開始 */
@@ -151,38 +172,6 @@ function startSession(targetWords) {
   elements.studyView.classList.remove("hidden");
   elements.totalCount.textContent = state.words.length;
   showWord();
-}
-
-/** 単語の表示 */
-function showWord() {
-  const currentWord = state.words[state.currentIndex];
-  state.isFlipped = false;
-  state.isProcessing = false;
-
-  // カードのリセット
-  updateCardStyle({
-    x: 0,
-    rotate: 0,
-    opacity: 1,
-    color: COLORS.default,
-    transition: "none",
-  });
-
-  // テキスト更新
-  elements.wordDisplay.textContent = currentWord.problem;
-  elements.instruction.textContent = "タップで回答を表示";
-  elements.currentIdx.textContent = state.currentIndex + 1;
-  elements.liveScore.textContent = state.sessionScore;
-
-  // 履歴表示
-  const stats = Storage.getStats()[currentWord.id];
-  // 表示例: 通算: ×5 / ○12 (直近: 未正解)
-  let historyText = "(初登場)";
-  if (stats) {
-    const recentStatus = stats.recentWrong > 0 ? " [未正解]" : "";
-    historyText = `通算: ×${stats.wrong} / ○${stats.correct}${recentStatus}`;
-  }
-  elements.historyInfo.textContent = historyText;
 }
 
 /** スワイプ処理 */
@@ -244,6 +233,13 @@ function showWord() {
     transition: "none",
   });
 
+  const statusEl = document.getElementById("mic-status");
+  if (statusEl) {
+    statusEl.textContent = "🎙️ Listening...";
+    statusEl.style.color = "#2ecc71"; // 稼働中の色（緑）に戻す
+    statusEl.className = "active";
+  }
+
   document.getElementById("instruction").textContent =
     "タップまたは発話で回答を表示";
   document.getElementById("current-idx").textContent = state.currentIndex + 1;
@@ -279,12 +275,7 @@ function handleFlip() {
   wd.classList.add("is-flipped");
 
   if (instruction) {
-    instruction.textContent = "← 不正解 (n) / 正解 (y) →";
-  }
-  if (recognition) {
-    try {
-      recognition.stop(); // 停止すると自動的に「Mic Off」に変わります
-    } catch (e) {}
+    instruction.textContent = "← 不正解 /スワイプしてください/ 正解→";
   }
 }
 
@@ -376,59 +367,65 @@ document.getElementById("file-input").onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
+  try {
+    if (recognition) {
+      recognition.start();
+      console.log("マイク起動命令を送信しました");
+    }
+  } catch (err) {
+    console.log("マイクはすでに動いているか、許可待ちです");
+  }
 
-  // onload は 1回だけ定義する
+  const reader = new FileReader();
   reader.onload = (event) => {
-    // 1. CSVパース（4カラム対応版にアップデート）
-    const rawWords = event.target.result
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.split(",").length >= 3)
-      .map((line) => {
-        const parts = line.split(",");
-        const id = parts[0].trim();
-        const answer = parts[parts.length - 1].trim();
-        // 4カラム目が補足、それ以外（中間）が問題文
-        const supplement =
-          parts.length >= 4 ? parts[parts.length - 2].trim() : "";
-        const problem = parts
-          .slice(1, parts.length - (parts.length >= 4 ? 2 : 1))
-          .join(",")
-          .trim();
-        return { id, problem, answer, supplement };
+    try {
+      // 1. CSVパース
+      const rawWords = event.target.result
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.split(",").length >= 3)
+        .map((line) => {
+          const parts = line.split(",");
+          const id = parts[0].trim();
+          const answer = parts[parts.length - 1].trim();
+          const hasSupp = parts.length >= 4;
+          const supplement = hasSupp ? parts[parts.length - 2].trim() : "";
+          const problem = parts
+            .slice(1, parts.length - (hasSupp ? 2 : 1))
+            .join(",")
+            .trim();
+          return { id, problem, answer, supplement };
+        });
+
+      if (rawWords.length === 0) return;
+
+      // 2. 未正解抽出
+      const stats = Storage.getStats();
+      const mistakeWords = rawWords.filter((w) => {
+        // 統計データを参照する
+        const s = stats[w.id];
+        return s ? s.recentWrong > 0 : true;
       });
 
-    if (rawWords.length === 0) return;
-
-    // 2. 未正解単語の抽出ロジック
-    const stats = Storage.getStats();
-    const mistakeWords = rawWords.filter((w) => {
-      const s = stats[w.id];
-      return s ? s.recentWrong > 0 : true;
-    });
-
-    const mistakeCount = mistakeWords.length;
-    let targetWords = rawWords;
-
-    if (mistakeCount > 0 && mistakeCount !== rawWords.length) {
-      if (confirm(`未正解の単語が${mistakeCount}件あります。抽出しますか？`)) {
-        targetWords = mistakeWords;
+      let targetWords = rawWords;
+      if (mistakeWords.length > 0 && mistakeWords.length !== rawWords.length) {
+        // --- 【iPhone対策2】confirmがブロックされる可能性を考慮し、処理を止めない ---
+        if (
+          window.confirm(
+            `未正解の単語が${mistakeWords.length}件あります。抽出しますか？`,
+          )
+        ) {
+          targetWords = mistakeWords;
+        }
       }
-    }
+      // 起動
+      ensureSpeechInitialized();
+      safeStartRecognition();
 
-    // 3. セッション開始
-    startSession(targetWords);
-
-    // 4. 【重要】音声認識をここでスタート
-    // ユーザー操作（ファイル選択）の直後なので権限が通る
-    try {
-      if (recognition) {
-        recognition.start();
-      }
-    } catch (err) {
-      // すでに起動している場合のエラー（InvalidStateError）を回避
-      console.log("Speech Recognition: Already running or error", err);
+      // 3. セッション開始
+      startSession(targetWords);
+    } catch (error) {
+      console.error("Parse Error:", error);
     }
   };
 

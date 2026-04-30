@@ -196,6 +196,62 @@ h2 {
   color: #475569;
 }
 
+/* -- mic -- */
+/* マイクエリア全体のレイアウト */
+.mic-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+/* ステータステキストの基本設定 */
+#mic-status {
+  font-weight: bold;
+  font-size: 1.1rem;
+  transition: color 0.3s ease; /* 色の変化を滑らかに */
+}
+
+/* 🎙️ Listening...（稼働中）のスタイル */
+#mic-status.active {
+  color: #2ecc71; /* 緑色 */
+}
+
+/* ❌ 停止中のスタイル（JavaScriptで色指定を上書きしない場合はこちら） */
+#mic-status.error {
+  color: #e74c3c; /* 赤色 */
+}
+
+/* ✅ 回答済みのスタイル */
+#mic-status.done {
+  color: #95a5a6; /* グレー */
+}
+
+/* 再開ボタンのスタイル */
+#mic-reconnect {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s;
+}
+
+#mic-reconnect:hover {
+  background-color: #2980b9;
+}
+
+#mic-reconnect:active {
+  transform: translateY(1px);
+}
+
 /* --- ファイル入力エリア --- */
 .file-label {
   display: flex;
@@ -217,6 +273,47 @@ h2 {
   border-color: var(--primary);
   background: #f1f5f9;
   color: var(--primary);
+}
+
+/* 注意事項・プライバシーセクションのベース */
+.info-section {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+/* iPhone/設定に関する注意事項 (イエロー系) */
+.notice-box {
+  background-color: #fffde7;
+  border: 1px solid #fff59d;
+  color: #5d4037;
+}
+
+.notice-box h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #3e2723;
+}
+
+.notice-box ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* プライバシー・データ保護に関する表示 (ブルー系) */
+.privacy-box {
+  margin-top: 12px;
+  background-color: #e3f2fd;
+  border: 1px solid #90caf9;
+  color: #0d47a1;
+}
+
+.privacy-box strong {
+  display: block;
+  margin-bottom: 4px;
 }
 
 /* --- ユーティリティ --- */
