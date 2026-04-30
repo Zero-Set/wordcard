@@ -30,6 +30,9 @@
       <div id="study-view" class="hidden">
         <div id="status-container">
           <span id="mic-status" class="mic-off">🎤 Mic Off</span>
+          <button id="mic-reconnect" onclick="handleMicReconnect()">
+            🔄 再開
+          </button>
         </div>
         <div id="live-score-container">
           <span id="current-idx">0</span>/<span id="total-count">0</span> |
@@ -60,6 +63,31 @@
         <button class="btn full" onclick="location.reload()">
           最初から（全件ロード）
         </button>
+      </div>
+      <hr />
+      <!-- カードエリアの下などに配置 -->
+      <div class="info-container">
+        <!-- iPhone/設定の注意事項 -->
+        <section class="info-section notice-box">
+          <h4>⚠️ iPhoneで動作しない場合</h4>
+          <ul>
+            <li>
+              <strong>音声認識：</strong>
+              「設定」の「プライバシーとセキュリティ」の「音声認識」でお使いのブラウザをONにしてください。
+              許可が必要な箇所は他にもあるため、別途iPhoneの設定をご確認ください。
+            </li>
+            <li>
+              <strong>消音モード解除：</strong>
+              本体の消音スイッチをオフにして音が出る状態にしてください。
+            </li>
+          </ul>
+        </section>
+
+        <!-- プライバシー保護の明記 -->
+        <section class="info-section privacy-box">
+          <strong>🔒 プライバシーとデータ取り扱い</strong>
+          本アプリはブラウザ内でのみ音声解析を行い、録音データの保存やサーバーへの送信は一切行いません。また、CSVや学習統計はすべてお使いの端末内（LocalStorage）にのみ保持されます。
+        </section>
       </div>
     </div>
 
