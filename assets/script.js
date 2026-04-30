@@ -8,15 +8,12 @@ function ensureSpeechInitialized() {
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    // mainに上げた後、iPhoneでこれが出たら「ブラウザ環境」の問題（HTTPSでない、またはアプリ内ブラウザ）
     console.error("SpeechRecognition is NOT available in this browser.");
     alert(
-      "音声認識がサポートされていません。HTTPS接続とSafariを確認してください。",
+      "音声認識がサポートされていません。Safari（iOS）等を使用してください。",
     );
     return;
   }
-
-  console.log("SpeechRecognition detected:", SpeechRecognition.name);
 
   recognition = new SpeechRecognition();
   recognition.lang = "ja-JP";
@@ -24,6 +21,8 @@ function ensureSpeechInitialized() {
   recognition.interimResults = true;
 
   recognition.onresult = (event) => {
+    if (state.isFlipped) return; // 回答済みの場合は無視
+
     let transcript = "";
     for (let i = event.resultIndex; i < event.results.length; i++) {
       if (event.results[i].isFinal) {
@@ -32,48 +31,47 @@ function ensureSpeechInitialized() {
     }
     if (transcript) {
       state.lastTranscript = transcript;
-      if (!state.isFlipped) handleFlip();
+      handleFlip(); // 判定ロジックへ
     }
   };
 
   recognition.onstart = () => {
     const statusEl = document.getElementById("mic-status");
+    const reconnectBtn = document.getElementById("mic-reconnect");
     if (statusEl) {
       statusEl.textContent = "🎙️ Listening...";
       statusEl.classList.add("active");
+      statusEl.style.color = "#2ecc71"; // 稼働中は緑色
     }
+    if (reconnectBtn) reconnectBtn.style.display = "none"; // ボタンを隠す
   };
 
   recognition.onend = () => {
     const statusEl = document.getElementById("mic-status");
-    if (statusEl) {
-      statusEl.textContent = "打合せ中..."; // 停止中
-      statusEl.classList.remove("active");
-    }
+    const reconnectBtn = document.getElementById("mic-reconnect");
 
-    // 手動停止でなく、かつ学習中の場合のみ再起動を試みる
-    if (
-      !isRecognitionManualStop &&
-      state.currentIndex < state.words.length &&
-      !state.isFlipped
-    ) {
-      safeStartRecognition();
+    if (statusEl) {
+      statusEl.textContent = "❌ 停止中";
+      statusEl.className = "error";
+      if (reconnectBtn) reconnectBtn.style.display = "inline-block";
     }
   };
 
   return recognition;
 }
 
-/** 二重起動を防ぐ安全なスタート関数 */
+// ボタンから呼ばれる手動復旧関数
+function handleMicReconnect() {
+  isRecognitionManualStop = false;
+  safeStartRecognition();
+}
+
 function safeStartRecognition() {
   if (!recognition) return;
   try {
-    // 状態を確認できないため、一旦止めてから開始するか、
-    // エラーをキャッチして無視する運用にします
     recognition.start();
   } catch (e) {
-    // すでに動いている場合は DOMException が発生するが無視してOK
-    console.log("Recognition is already running or starting.");
+    console.log("Recognition already started or failed:", e);
   }
 }
 
@@ -288,11 +286,6 @@ function handleFlip() {
 
   if (instruction) {
     instruction.textContent = "← 不正解 (n) / 正解 (y) →";
-  }
-  if (recognition) {
-    try {
-      recognition.stop(); // 停止すると自動的に「Mic Off」に変わります
-    } catch (e) {}
   }
 }
 
