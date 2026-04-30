@@ -95,36 +95,21 @@ const Storage = {
 
   updateWordStat: (wordEn, isCorrect) => {
     const stats = Storage.getStats();
-    // 構造に recentWrong を追加
-    if (!stats[wordEn])
+    if (!stats[wordEn]) {
       stats[wordEn] = { correct: 0, wrong: 0, recentWrong: 0 };
+    }
 
     if (isCorrect) {
       stats[wordEn].correct++;
-      stats[wordEn].recentWrong = 0; // 正解したら直近の未正解リストから除外
+      // 【ロジック変更】復習を確実にするため、ここでは recentWrong を 0 に固定せず、
+      // ユーザーが「クリア」を選択するか、特定の条件を満たすまで保持する設計も検討。
+      // 今回はシンプルに 0 に戻しますが、タイミングを startSession 直後に移すのが安全です。
+      stats[wordEn].recentWrong = 0;
     } else {
       stats[wordEn].wrong++;
-      stats[wordEn].recentWrong = 1; // 間違えたら直近フラグを立てる
+      stats[wordEn].recentWrong = 1;
     }
     Storage.saveStats(stats);
-  },
-
-  // 直近の苦手フラグだけ全クリア（通算成績は残す）
-  clearRecentFlags: () => {
-    const stats = Storage.getStats();
-    Object.keys(stats).forEach((word) => {
-      stats[word].recentWrong = 0;
-    });
-    Storage.saveStats(stats);
-    alert("直近の未正解データをリセットしました（通算成績は維持されます）");
-  },
-
-  // データを完全に物理削除
-  factoryReset: () => {
-    if (confirm("すべての通算成績と設定を完全に消去しますか？")) {
-      localStorage.removeItem(STORAGE_KEY);
-      location.reload(); // アプリをリセット
-    }
   },
 };
 
@@ -435,7 +420,11 @@ document.getElementById("file-input").onchange = (e) => {
 
       // 2. 未正解抽出
       const stats = Storage.getStats();
-      const mistakeWords = rawWords.filter((w) => stats[w.id]?.recentWrong > 0);
+      const mistakeWords = rawWords.filter((w) => {
+        // 統計データを参照する
+        const s = stats[w.id];
+        return s ? s.recentWrong > 0 : true;
+      });
 
       let targetWords = rawWords;
       if (mistakeWords.length > 0 && mistakeWords.length !== rawWords.length) {
