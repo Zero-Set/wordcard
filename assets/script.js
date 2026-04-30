@@ -22,13 +22,28 @@ function ensureSpeechInitialized() {
 
   recognition.onresult = (event) => {
     if (state.isFlipped) return; // 回答済みの場合は無視
-
+    // --- ここから既存のロジックを維持 ---
     let transcript = "";
+    let interimTranscript = ""; // UI表示用に追加するだけ
+
     for (let i = event.resultIndex; i < event.results.length; i++) {
       if (event.results[i].isFinal) {
         transcript = event.results[i][0].transcript;
+      } else {
+        interimTranscript += event.results[i][0].transcript; // 途中経過用
       }
     }
+
+    // --- UIへのフィードバック（ここだけ追加） ---
+    const statusEl = document.getElementById("mic-status");
+    if (statusEl) {
+      if (interimTranscript) {
+        statusEl.textContent = `🎙️ ${interimTranscript}...`; // 喋っている最中
+      } else if (transcript) {
+        statusEl.textContent = `✅ ${transcript}`; // 確定した瞬間
+      }
+    }
+
     if (transcript) {
       state.lastTranscript = transcript;
       handleFlip(); // 判定ロジックへ
@@ -159,38 +174,6 @@ function startSession(targetWords) {
   showWord();
 }
 
-/** 単語の表示 */
-function showWord() {
-  const currentWord = state.words[state.currentIndex];
-  state.isFlipped = false;
-  state.isProcessing = false;
-
-  // カードのリセット
-  updateCardStyle({
-    x: 0,
-    rotate: 0,
-    opacity: 1,
-    color: COLORS.default,
-    transition: "none",
-  });
-
-  // テキスト更新
-  elements.wordDisplay.textContent = currentWord.problem;
-  elements.instruction.textContent = "タップで回答を表示";
-  elements.currentIdx.textContent = state.currentIndex + 1;
-  elements.liveScore.textContent = state.sessionScore;
-
-  // 履歴表示
-  const stats = Storage.getStats()[currentWord.id];
-  // 表示例: 通算: ×5 / ○12 (直近: 未正解)
-  let historyText = "(初登場)";
-  if (stats) {
-    const recentStatus = stats.recentWrong > 0 ? " [未正解]" : "";
-    historyText = `通算: ×${stats.wrong} / ○${stats.correct}${recentStatus}`;
-  }
-  elements.historyInfo.textContent = historyText;
-}
-
 /** スワイプ処理 */
 async function handleSwipe(isCorrect) {
   state.isProcessing = true;
@@ -250,6 +233,13 @@ function showWord() {
     transition: "none",
   });
 
+  const statusEl = document.getElementById("mic-status");
+  if (statusEl) {
+    statusEl.textContent = "🎙️ Listening...";
+    statusEl.style.color = "#2ecc71"; // 稼働中の色（緑）に戻す
+    statusEl.className = "active";
+  }
+
   document.getElementById("instruction").textContent =
     "タップまたは発話で回答を表示";
   document.getElementById("current-idx").textContent = state.currentIndex + 1;
@@ -285,7 +275,7 @@ function handleFlip() {
   wd.classList.add("is-flipped");
 
   if (instruction) {
-    instruction.textContent = "← 不正解 (n) / 正解 (y) →";
+    instruction.textContent = "← 不正解 /スワイプしてください/ 正解→";
   }
 }
 
@@ -377,8 +367,6 @@ document.getElementById("file-input").onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  // --- 【修正】ここではまだ start() しない！初期化(ensure)だけに留める ---
-  ensureSpeechInitialized();
   try {
     if (recognition) {
       recognition.start();
@@ -430,6 +418,9 @@ document.getElementById("file-input").onchange = (e) => {
           targetWords = mistakeWords;
         }
       }
+      // 起動
+      ensureSpeechInitialized();
+      safeStartRecognition();
 
       // 3. セッション開始
       startSession(targetWords);

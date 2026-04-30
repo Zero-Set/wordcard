@@ -275,6 +275,47 @@ h2 {
   color: var(--primary);
 }
 
+/* 注意事項・プライバシーセクションのベース */
+.info-section {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+/* iPhone/設定に関する注意事項 (イエロー系) */
+.notice-box {
+  background-color: #fffde7;
+  border: 1px solid #fff59d;
+  color: #5d4037;
+}
+
+.notice-box h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #3e2723;
+}
+
+.notice-box ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* プライバシー・データ保護に関する表示 (ブルー系) */
+.privacy-box {
+  margin-top: 12px;
+  background-color: #e3f2fd;
+  border: 1px solid #90caf9;
+  color: #0d47a1;
+}
+
+.privacy-box strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
 /* --- ユーティリティ --- */
 .hidden {
   display: none !important; /* JSの表示/非表示を確実に適用 */
