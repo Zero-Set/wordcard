@@ -1,9 +1,25 @@
+/* --- ベース・変数設定 --- */
+:root {
+  --primary: #4f46e5; /* モダンなインディゴ（JSのデフォルト色と合わせるのが理想） */
+  --success: #10b981; /* 正解時の緑 */
+  --danger: #ef4444; /* 不正解時の赤 */
+  --bg-main: #f8fafc; /* 洗練された薄いグレー */
+  --text-main: #1e293b; /* 濃いネイビーグレー */
+  --text-sub: #64748b; /* 補助テキスト用のグレー */
+}
+
 body {
   margin: 0;
-  padding: 10px;
-  font-family: sans-serif;
-  background: #f0f2f5;
-  touch-action: none; /* スクロールを止めてスワイプを優先 */
+  padding: 16px;
+  /* ★ Apple/Android標準の美しいフォントシステム */
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  touch-action: none; /* ブラウザ標準のスクロールを無効化 */
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 #app {
@@ -12,35 +28,37 @@ body {
   margin: 0 auto;
 }
 
-/* 上部のスコア表示 */
+/* --- 上部スコアエリア --- */
 #live-score-container {
   text-align: center;
-  padding: 15px;
-  background: #f1f5f9; /* 薄いグレーブルーの背景 */
-  border-radius: 12px;
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 50px; /* 丸みのあるピル型デザイン */
   font-weight: 800;
-  font-size: 1.2rem;
-  color: #334155;
+  font-size: 1rem;
+  color: var(--text-main);
   margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 #live-score {
-  color: #10b981;
+  color: var(--success);
 }
 
-/* ★「単語帳」タイトルなどのセンタリング */
-#setup-view h2,
-#result-view h2 {
+/* --- タイトルエリア --- */
+h2 {
   text-align: center;
-  margin-bottom: 20px;
-  color: #1e293b;
+  margin-bottom: 24px;
+  color: var(--text-main);
+  font-weight: 900;
+  letter-spacing: -0.5px;
 }
 
-/* カードエリアを上部に配置 */
+/* --- カード・スワイプエリア --- */
 #swipe-wrapper {
   position: relative;
   width: 100%;
-  height: 320px;
+  height: 320px; /* 親要素の高さ確保 */
   margin-top: 10px;
 }
 
@@ -48,73 +66,142 @@ body {
   position: absolute;
   top: 0;
   width: 100%;
-  height: 300px; /* 固定高さを維持 */
-  background: white;
-  border: 4px solid #007bff;
-  border-radius: 12px;
+  height: 300px;
+  background: #ffffff;
+  /* ★JSのborderColor制御を活かすため、borderの設定を分離 */
+  border-width: 4px;
+  border-style: solid;
+  border-color: var(--primary);
+  border-radius: 20px;
 
   display: flex;
   flex-direction: column;
-  justify-content: center; /* 中央に配置 */
+  justify-content: center;
   align-items: center;
   text-align: center;
 
-  /* ★ 重要：paddingを増やして、文字が枠に当たらないように死守する */
-  padding: 20px;
+  padding: 24px;
   box-sizing: border-box;
+  z-index: 10;
 
-  /* ★ スクロールさせない設定 */
+  /* ★重要：transitionに 'all' を使わない。JSの座標計算と喧嘩してガタつくのを防ぐ */
+  transition:
+    border-color 0.2s ease,
+    opacity 0.3s ease;
+  will-change: transform; /* アニメーションの最適化 */
+
   overflow: hidden;
   touch-action: none;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
 }
 
 #word-display {
-  font-size: 1.6rem; /* 文字数が多い時のために少しだけ調整 */
-  font-weight: bold;
-  width: 100%; /* 横幅いっぱい使って中央へ */
-  margin-bottom: 10px;
-  line-height: 1.5;
+  font-size: 1.4rem; /* 長文を考慮し1.6remから微調整 */
+  font-weight: 800;
+  width: 100%;
+  line-height: 1.6;
+  margin-bottom: 12px;
+  color: var(--text-main);
+  word-wrap: break-word;
 }
 
-.history-badge {
-  font-size: 1rem;
-  color: #333;
-  margin-bottom: 5px;
+#history-info {
+  font-size: 0.9rem;
+  color: var(--text-sub);
+  margin-bottom: 8px;
+  font-weight: 600;
 }
 
 #instruction {
-  font-size: 1rem;
-  color: #333;
-  /* 位置を固定せず、flexの並びとして配置 */
+  font-size: 0.9rem;
+  color: var(--text-sub);
+  font-weight: 500;
 }
 
-.hidden {
-  display: none !important;
-}
-
-/* セットアップ・結果画面のボタン等 */
-.btn {
-  width: 100%;
-  padding: 12px;
-  margin: 5px 0;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.btn.full {
-  display: block;
-}
-.btn-secondary {
-  background: #333;
-  color: white;
-}
-.file-label {
-  display: block;
-  padding: 40px;
-  border: 2px dashed #007bff;
-  background: #f8fbff;
+/* --- 結果発表エリア (#result-view) --- */
+#result-view {
   text-align: center;
-  border-radius: 12px;
+  padding: 40px 20px;
+}
+
+/* ★画像のようにスコアを巨大化 */
+#final-score {
+  display: block;
+  font-size: 5rem;
+  font-weight: 900;
+  color: var(--primary);
+  line-height: 1;
+  margin: 20px 0;
+}
+
+#final-score::after {
+  content: "%";
+  font-size: 1.5rem;
+  margin-left: 4px;
+  vertical-align: baseline;
+}
+
+/* --- ボタン共通設定 --- */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 16px;
+  margin: 12px 0;
+  border: none;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 800;
   cursor: pointer;
+  transition:
+    transform 0.1s ease,
+    background-color 0.2s;
+  box-sizing: border-box;
+}
+
+/* ボタンを押した時の「ポチッ」とした感覚 */
+.btn:active {
+  transform: scale(0.97);
+}
+
+/* 「今回のミスを解き直す」ボタン */
+#retry-mistakes-btn {
+  background-color: var(--danger);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+/* 「最初から」ボタン（セカンダリー） */
+.btn-secondary {
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
+/* --- ファイル入力エリア --- */
+.file-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  border: 2px dashed #cbd5e1;
+  background: #ffffff;
+  text-align: center;
+  border-radius: 20px;
+  cursor: pointer;
+  color: var(--text-sub);
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.file-label:hover {
+  border-color: var(--primary);
+  background: #f1f5f9;
+  color: var(--primary);
+}
+
+/* --- ユーティリティ --- */
+.hidden {
+  display: none !important; /* JSの表示/非表示を確実に適用 */
 }
