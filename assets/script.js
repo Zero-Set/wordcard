@@ -63,21 +63,63 @@ function ensureSpeechInitialized() {
 
   recognition.onend = () => {
     const statusEl = document.getElementById("mic-status");
-    const reconnectBtn = document.getElementById("mic-reconnect");
+    const stopBtn = document.getElementById("mic-stop-btn"); // 停止ボタン
+    const reconnectBtn = document.getElementById("mic-reconnect"); // 再開ボタン
 
-    if (statusEl) {
-      statusEl.textContent = "❌ 停止中";
-      statusEl.className = "error";
-      if (reconnectBtn) reconnectBtn.style.display = "inline-block";
+    if (isRecognitionManualStop) {
+      // 1. ユーザーが自分の意思で止めた場合
+      statusEl.textContent = "🔇 停止中（オフ）";
+      statusEl.classList.remove("active");
+      statusEl.classList.add("error");
+
+      if (stopBtn) stopBtn.style.display = "none"; // 停止ボタンは隠す
+      if (reconnectBtn) reconnectBtn.style.display = "inline-block"; // 再開ボタンだけ出す
+    } else {
+      // 2. タイムアウトやエラーで勝手に切れた場合
+      statusEl.textContent = "❌ 切断されました";
+      statusEl.classList.remove("active");
+      statusEl.classList.add("error");
+
+      if (stopBtn) stopBtn.style.display = "none"; // 停止ボタンは隠す
+      if (reconnectBtn) reconnectBtn.style.display = "inline-block"; // 再開ボタンを出して復帰を促す
     }
   };
 
   return recognition;
 }
 
+/**
+ * 手動でマイクを止める
+ */
+function handleMicManualStop() {
+  isRecognitionManualStop = true; // 手動停止フラグを立てる
+  if (recognition) {
+    recognition.stop(); // 音声認識エンジンを停止
+  }
+
+  // UIの更新
+  const statusEl = document.getElementById("mic-status");
+  const stopBtn = document.getElementById("mic-stop-btn");
+  const reconnectBtn = document.getElementById("mic-reconnect");
+
+  if (statusEl) {
+    statusEl.textContent = "🔇 停止中（手動）";
+    statusEl.className = "error";
+  }
+  if (stopBtn) stopBtn.style.display = "none";
+  if (reconnectBtn) reconnectBtn.style.display = "inline-block";
+}
+
 // ボタンから呼ばれる手動復旧関数
 function handleMicReconnect() {
   isRecognitionManualStop = false;
+
+  const stopBtn = document.getElementById("mic-stop-btn");
+  const reconnectBtn = document.getElementById("mic-reconnect");
+
+  if (stopBtn) stopBtn.style.display = "inline-block";
+  if (reconnectBtn) reconnectBtn.style.display = "none";
+
   safeStartRecognition();
 }
 
@@ -204,27 +246,41 @@ async function handleSwipe(isCorrect) {
 /**
  * 表面を表示する時
  */
+/**
+ * 表面（新しい問題）を表示する
+ */
 function showWord() {
+  // 1. 必要な要素とデータの取得（constを冒頭に集約）
   const current = state.words[state.currentIndex];
+  const wd = document.getElementById("word-display");
+  const statusEl = document.getElementById("mic-status");
+  const stopBtn = document.getElementById("mic-stop-btn");
+  const reconnectBtn = document.getElementById("mic-reconnect");
+  const instructionEl = document.getElementById("instruction");
+  const historyEl = document.getElementById("history-info");
+  const liveScoreEl = document.getElementById("live-score");
+  const currentIdxEl = document.getElementById("current-idx");
+  const totalCountEl = document.getElementById("total-count");
+
+  // 2. アプリケーション状態のリセット
   state.isFlipped = false;
   state.isProcessing = false;
-  state.lastTranscript = ""; // 音声バッファをクリア
+  state.lastTranscript = ""; // 音声入力バッファをリセット
 
-  // --- スコア表示の同期 ---
-  document.getElementById("live-score").textContent = state.sessionScore;
-  document.getElementById("current-idx").textContent = state.currentIndex + 1;
-  document.getElementById("total-count").textContent = state.words.length;
+  // 3. スコア・進捗表示の同期
+  if (liveScoreEl) liveScoreEl.textContent = state.sessionScore;
+  if (currentIdxEl) currentIdxEl.textContent = state.currentIndex + 1;
+  if (totalCountEl) totalCountEl.textContent = state.words.length;
 
-  const wd = document.getElementById("word-display");
+  // 4. カード表示のリセット
+  if (wd) {
+    wd.classList.remove("is-flipped");
+    delete wd.dataset.problem;
+    delete wd.dataset.transcript;
+    wd.textContent = current.problem;
+  }
 
-  // 1. 裏面用のクラスとデータ属性を完全に掃除
-  wd.classList.remove("is-flipped");
-  delete wd.dataset.problem;
-  delete wd.dataset.transcript;
-
-  wd.textContent = current.problem; // まずは普通に問題を表示
-
-  // 3. カードの座標と透明度を「瞬間的」に戻す（transition: none）
+  // 5. カードアニメーションの状態リセット
   updateCardStyle({
     x: 0,
     rotate: 0,
@@ -233,24 +289,43 @@ function showWord() {
     transition: "none",
   });
 
-  const statusEl = document.getElementById("mic-status");
-  if (statusEl) {
-    statusEl.textContent = "🎙️ Listening...";
-    statusEl.style.color = "#2ecc71"; // 稼働中の色（緑）に戻す
-    statusEl.className = "active";
+  // 6. 音声認識（マイク）の表示と制御
+  if (isRecognitionManualStop) {
+    // 手動停止モードを維持
+    if (statusEl) {
+      statusEl.textContent = "🔇 停止中（オフ）";
+      statusEl.style.color = "#999";
+      statusEl.className = "error";
+    }
+    if (stopBtn) stopBtn.style.display = "none";
+    if (reconnectBtn) reconnectBtn.style.display = "inline-block";
+  } else {
+    // 自動認識モード（通常）
+    if (statusEl) {
+      statusEl.textContent = "🎙️ Listening...";
+      statusEl.style.color = "#2ecc71";
+      statusEl.className = "active";
+    }
+    if (stopBtn) stopBtn.style.display = "inline-block";
+    if (reconnectBtn) reconnectBtn.style.display = "none";
+
+    // マイク再開（関数外のヘルパーを呼び出す）
+    safeStartRecognition();
   }
 
-  document.getElementById("instruction").textContent =
-    "タップまたは発話で回答を表示";
-  document.getElementById("current-idx").textContent = state.currentIndex + 1;
+  // 7. テキスト情報の更新
+  if (instructionEl) {
+    instructionEl.textContent = "タップまたは発話で回答を表示";
+  }
 
-  // 履歴の更新
+  // 8. 履歴データの表示更新
   const stats = Storage.getStats()[current.id];
-  document.getElementById("history-info").textContent = stats
-    ? `通算: ×${stats.wrong} / ○${stats.correct}${stats.recentWrong ? " [未正解]" : ""}`
-    : "(初登場)";
+  if (historyEl) {
+    historyEl.textContent = stats
+      ? `通算: ×${stats.wrong} / ○${stats.correct}${stats.recentWrong ? " [未正解]" : ""}`
+      : "(初登場)";
+  }
 }
-
 /**
  * 裏返す時（handleFlip）
  */
