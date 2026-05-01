@@ -115,8 +115,6 @@ h2 {
 }
 
 #word-display.is-flipped::after {
-  /* 音声入力があれば、それも表示 */
-  content: "Voice: " attr(data-transcript);
   display: block;
   font-size: 0.9rem;
   color: #ef4444;

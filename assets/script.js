@@ -157,7 +157,7 @@ const Storage = {
     if (isCorrect) {
       stats[wordEn].correct++;
       // 【ロジック変更】復習を確実にするため、ここでは recentWrong を 0 に固定せず、
-      // ユーザーが「クリア」を選択するか、特定の条件を満たすまで保持する設計も検討。
+      // ユーザーが「クリア」を選択するか、特定の条件を満たすflまで保持する設計も検討。
       // 今回はシンプルに 0 に戻しますが、タイミングを startSession 直後に移すのが安全です。
       stats[wordEn].recentWrong = 0;
     } else {
@@ -276,7 +276,6 @@ function showWord() {
   if (wd) {
     wd.classList.remove("is-flipped");
     wd.dataset.problem = current.problem;
-    delete wd.dataset.transcript;
     wd.textContent = current.problem;
   }
 
@@ -327,7 +326,7 @@ function showWord() {
   }
 }
 /**
- * 裏返す時（handleFlip）
+ * 裏返す時の操作を実施する。
  */
 function handleFlip() {
   const current = state.words[state.currentIndex];
@@ -339,11 +338,6 @@ function handleFlip() {
 
   // 表面の文字（current.problem）を属性に退避
   wd.dataset.problem = current.problem;
-
-  // 音声テキストを属性に退避
-  if (state.lastTranscript) {
-    wd.dataset.transcript = state.lastTranscript;
-  }
 
   // メイン表示を「回答」に切り替え
   wd.textContent = current.answer;
@@ -389,9 +383,8 @@ elements.card.onclick = () => {
     Math.abs(state.touch.currentX) > 5
   )
     return;
-  state.isFlipped = true;
-  elements.wordDisplay.textContent = state.words[state.currentIndex].answer;
-  elements.instruction.textContent = "← 不正解だった / 正解だった →";
+  // タップ時の挙動
+  handleFlip();
 };
 
 // タッチイベント
